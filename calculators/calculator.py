@@ -8,23 +8,29 @@ class Result():
     forces: np.ndarray
     stresses: np.ndarray
 
-    def energy(self) -> any:
+    def energy(self) -> float:
         return np.sum(self.energies)
 
-    def force(self) -> any:
+    def force(self) -> float:
         return np.sum(self.forces)
 
-    def stress(self) -> any:
+    def stress(self) -> float:
         return np.sum(self.stresses)
     
     
 class Calculator(ABC):
+    max_r = 10
 
     def __init__(self, box_size: float, n: int) -> None:
         super().__init__()
         self._box_size = box_size
         self._n = n
-        self._R = np.random.uniform(size=(self._n, 3))
+        # TODO: Allow passing existing atom coordinates to verify the same computations among different calculators
+        self._R = self._generate_R()
+
+    def _generate_R(self) -> np.ndarray:
+        print("numpy PRNG")
+        return np.random.uniform(size=(self._n, 3)) * self.max_r
 
     @property
     def box_size(self) -> float:
@@ -37,10 +43,6 @@ class Calculator(ABC):
     @property
     def R(self) -> np.ndarray:
         return self._R
-
-    # def compute_energies()
-    # def compute_forces()
-    # def compute_stresses()
 
     @abstractmethod
     def calculate(self) -> Result: 

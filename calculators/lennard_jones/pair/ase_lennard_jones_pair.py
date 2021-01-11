@@ -2,6 +2,7 @@ from calculators.lennard_jones.lennard_jones_calculator import LennardJonesCalcu
 from calculators.calculator import Result
 
 from ase import Atoms
+# from ase.build import bulk
 from ase.calculators.lj import LennardJones
 from ase.calculators.calculator import PropertyNotImplementedError
 
