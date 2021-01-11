@@ -1,0 +1,8 @@
+{
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.gitignore": true,
+        "**/.vscode": true
+    },
+    "python.pythonPath": "/home/pop518504/Workspace/.conda/envs/gknet-benchmarks/bin/python"
+}
