@@ -34,11 +34,11 @@ class AseLennardJonesPair(Calculator):
         return obj
     
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R, sigma: float, epsilon: float, r_cutoff: float) -> AseLennardJonesPair:
+    def create_potential(cls, box_size: float, n: int, R: np.ndarray, sigma: float, epsilon: float, r_cutoff: float) -> AseLennardJonesPair:
         return super().create_potential(box_size, n, R, sigma, epsilon, r_cutoff)
         
     def _generate_R(self, n: int, scaling_factor: float) -> np.ndarray:
-        print("ase_lennard_jones_calculator.py PRNG")
+        print("ASE/NumPy PRNG")
         return np.random.uniform(size=(n, 3)) * scaling_factor
 
     def _compute_supercell_multipliers(self, element: str, n: int) -> List[float]:

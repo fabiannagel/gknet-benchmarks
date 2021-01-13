@@ -4,7 +4,7 @@
 # sys.path.insert(0, '/home/pop518504/git/gknet-benchmarks')
 
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
-# from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
+from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
 # from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
 
 def generate_system_sizes(z_max: int, unit_cell_size):
@@ -22,11 +22,13 @@ epsilon = 1.5
 r_cutoff = 11.0
 r_onset = 6.0
 
-ase = AseLennardJonesPair.create_potential(box_size, n, [], sigma, epsilon, r_cutoff)
-result = ase.calculate()
+# ase = AseLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff)
+# result = ase.calculate()
+# print(ase._R.shape)
 
-print(result.stresses)
-
+jmd = JmdLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
+result = jmd.calculate()
+# print(result.energies.shape)
 
 # ase = AseLennardJonesPair(box_size=box_size, n=n, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff)
 
