@@ -12,17 +12,12 @@ class JmdLennardJonesPair(LennardJonesCalculatorBase):
     def __init__(self, box_size: float, n: int, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> None:
         super().__init__(box_size, n, sigma, epsilon, r_cutoff)
         self._r_onset = r_onset
-        self._displacement_fn, self._shift_fn = space.periodic(self._box_size)
-        self._energy_fn = jit(energy.lennard_jones_pair(self._displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True))
-        self._force_fn = jit(energy.lennard_jones_pair(self._displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=False))
-
-        # TODO: Allow overriding CPU-based atom position generation
-        # key = random.PRNGKey(0)
-        # key, subkey = random.split(key)
-        # self._R = random.uniform(subkey, shape=(n, 3))
+        self._displacement_fn, self._shift_fn = jit(space.periodic(self._box_size))
+        self._atomwise_energy_fn = jit(energy.lennard_jones_pair(self._displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True))
+        self._total_energy_fn = jit(energy.lennard_jones_pair(self._displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=False))
 
     def _generate_R(self) -> jnp.ndarray:
-        print("jaxmd PRNG")
+        # TODO: Build a global service to manage and demand PRNGKeys for JAX-based simulations
         key = random.PRNGKey(0)
         key, subkey = random.split(key)
         return random.uniform(subkey, shape=(self._n, 3)) * self.max_r
@@ -33,8 +28,8 @@ class JmdLennardJonesPair(LennardJonesCalculatorBase):
 
     def calculate(self) -> Result:
         def wrapped_computation():
-            energies = self._energy_fn(self._R)
-            forces = -grad(self._force_fn)(self._R)
+            energies = self._atomwise_energy_fn(self._R)
+            forces = -grad(self._total_energy_fn)(self._R)
             stresses = None
             return energies, forces, stresses
         

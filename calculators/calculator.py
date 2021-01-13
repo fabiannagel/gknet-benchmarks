@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from ase.atoms import Atoms
 import numpy as np
 
 @dataclass
@@ -19,30 +22,29 @@ class Result():
     
     
 class Calculator(ABC):
-    max_r = 10
 
-    def __init__(self, box_size: float, n: int) -> None:
-        super().__init__()
+    def __init__(self, box_size: float, n: int, R: np.ndarray) -> None:
         self._box_size = box_size
         self._n = n
-        # TODO: Allow passing existing atom coordinates to verify the same computations among different calculators
-        self._R = self._generate_R()
+        self._R = R
+        
+    @classmethod
+    def from_ase_atoms(cls, atoms: Atoms, *args) -> cls:
+        return cls(atoms.get_cell(), len(atoms), atoms.get_positions(), args)
 
-    def _generate_R(self) -> np.ndarray:
+    @classmethod
+    def create_potential(cls, box_size: float, n: int, R = [], *args) -> cls:
+        if len(R) == 0: 
+            R = cls._generate_R(cls, n, box_size)
+        return cls(box_size, n, R, *args)
+    
+    def _generate_R(self, n: int, scaling_factor: float) -> np.ndarray:
         print("numpy PRNG")
-        return np.random.uniform(size=(self._n, 3)) * self.max_r
+        return np.random.uniform(size=(n, 3)) * scaling_factor
 
-    @property
-    def box_size(self) -> float:
-        return self._box_size
-
-    @property
-    def n(self) -> float:
-        return self._n
-
-    @property
-    def R(self) -> np.ndarray:
-        return self._R
+    @abstractmethod
+    def _generate_R(self, n: int, scaling_factor: float) -> np.ndarray:
+        pass    
 
     @abstractmethod
     def calculate(self) -> Result: 

@@ -9,10 +9,11 @@ class AsaxLennardJonesPair(LennardJonesCalculatorBase):
     def __init__(self, box_size: float, n: int, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> None:
         super().__init__(box_size, n, sigma, epsilon, r_cutoff)
         self._r_onset = r_onset
-        # self._atoms = Atoms(positions=self._R)
         
         self._atoms = bulk("Ar", cubic=True) * [5, 5, 5]
-        self._atoms.set_cell(1.05 * self._atoms.get_cell(), scale_atoms=True)
+        # ASE initializes the system in an energy minimum, so forces = 0.
+        # We can introduce strain by upscaling the super cell like this:
+        # self._atoms.set_cell(1.05 * self._atoms.get_cell(), scale_atoms=True)
         self._atoms.calc = LennardJones(self._epsilon, self._sigma, self._r_cutoff, self._r_onset, x64=True, stress=True)
 
     @property
