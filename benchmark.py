@@ -3,6 +3,7 @@
 # del sys.path[0]
 # sys.path.insert(0, '/home/pop518504/git/gknet-benchmarks')
 
+from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
 from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
 # from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
@@ -27,11 +28,10 @@ r_onset = 6.0
 # print(ase._R.shape)
 
 jmd = JmdLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
-result = jmd.calculate()
+# result = jmd.calculate()
 # print(result.energies.shape)
 
-# ase = AseLennardJonesPair(box_size=box_size, n=n, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff)
-
+asax = AsaxLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
 
 
 
