@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import List
-# from calculators.lennard_jones.lennard_jones_calculator import LennardJonesCalculatorBase
 from calculators.calculator import Calculator, Result
 
 from ase import Atoms
@@ -16,21 +15,16 @@ import math
 
 class AseLennardJonesPair(Calculator):
     
-    # def __init__(self, box_size: float, n: int, sigma: float, epsilon: float, r_cutoff: float) -> None:
-        # super().__init__(box_size, n, sigma, epsilon, r_cutoff)
-        
-        # self._atoms = bulk('Ar', cubic=True) * self._compute_supercell_multipliers('Ar', self._n)
-        # ASE initializes the system in an energy minimum, so forces = 0.
-        # We can introduce strain by upscaling the super cell like this:
-        # self._atoms.set_cell(1.05 * self._atoms.get_cell(), scale_atoms=True)    
-        # self._atoms.calc = LennardJones(sigma=self._sigma, epsilon=self._epsilon, rc=self._r_cutoff)
-
     def __init__(self, box_size: float, n: int, R: np.ndarray, sigma: float, epsilon: float, r_cutoff: float):
         super().__init__(box_size, n, R)
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff
         self._atoms = bulk('Ar', cubic=True) * self._compute_supercell_multipliers('Ar', self._n)
+        # ASE initializes the system in an energy minimum, so forces = 0.
+        # We can introduce strain by upscaling the super cell like this:
+        # self._atoms.set_cell(1.05 * self._atoms.get_cell(), scale_atoms=True)    
+        # self._atoms.calc = LennardJones(sigma=self._sigma, epsilon=self._epsilon, rc=self._r_cutoff)
         self._atoms.calc = LennardJones(sigma=self._sigma, epsilon=self._epsilon, rc=self._r_cutoff)
 
     @classmethod
@@ -55,11 +49,5 @@ class AseLennardJonesPair(Calculator):
     def calculate(self) -> Result:
         energies = self._atoms.get_potential_energies()
         forces = self._atoms.get_forces()
-        
-        # TODO: stresses are implemented. why doesn't this work?
-        try:
-            stresses = self._atoms.get_stresses()
-        except PropertyNotImplementedError:
-            stresses = None
-
+        stresses = self._atoms.get_stresses()
         return Result(energies, forces, stresses)

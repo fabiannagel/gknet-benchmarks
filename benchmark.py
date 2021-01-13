@@ -3,7 +3,6 @@
 # del sys.path[0]
 # sys.path.insert(0, '/home/pop518504/git/gknet-benchmarks')
 
-from calculators.lennard_jones.lennard_jones_calculator import LennardJonesCalculatorBase
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
 # from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
 # from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
@@ -26,7 +25,7 @@ r_onset = 6.0
 ase = AseLennardJonesPair.create_potential(box_size, n, [], sigma, epsilon, r_cutoff)
 result = ase.calculate()
 
-print(result.energies)
+print(result.stresses)
 
 
 # ase = AseLennardJonesPair(box_size=box_size, n=n, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff)
