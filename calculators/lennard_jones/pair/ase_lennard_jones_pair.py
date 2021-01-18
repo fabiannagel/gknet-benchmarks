@@ -1,4 +1,5 @@
 from __future__ import annotations
+import warnings
 
 from typing import List
 from calculators.calculator import Calculator, Result
@@ -46,7 +47,12 @@ class AseLennardJonesPair(Calculator):
 
     def _compute_supercell_multipliers(self, element: str, n: int) -> List[float]:
         if element != 'Ar': raise NotImplementedError('Unknown cubic unit cell size for element ' + element)
-        dimension_mulitplier = math.floor((np.cbrt(n / 4)))
+        argon_unit_cell_size = 4
+        dimension_mulitplier = math.floor((np.cbrt(n / argon_unit_cell_size)))
+        
+        actual_n = argon_unit_cell_size * dimension_mulitplier**3 
+        if (actual_n != n):
+            warnings.warn('{} unit cell size causes deviation from desired n={}. Final atom count n={}'.format(element, str(n), str(actual_n)), RuntimeWarning)
         return list(itertools.repeat(dimension_mulitplier, 3))
 
     def calculate(self) -> Result:

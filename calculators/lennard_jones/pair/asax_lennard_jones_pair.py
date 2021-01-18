@@ -1,4 +1,6 @@
 from __future__ import annotations
+from typing import List
+import warnings
 
 from calculators.calculator import Calculator, Result
 from ase import Atoms
@@ -42,24 +44,21 @@ class AsaxLennardJonesPair(Calculator):
         key, subkey = random.split(key)
         return random.uniform(subkey, shape=(n, 3)) * scaling_factor
 
-    # TODO: Duplicate code from AseLennardJonesPair(). Make this a mixin?
+    # TODO: Duplicate code from AseLennardJonesPair(). Make this a mixin or something? Or inherit Ase -> Asax?
     def _compute_supercell_multipliers(self, element: str, n: int) -> List[float]:
         if element != 'Ar': raise NotImplementedError('Unknown cubic unit cell size for element ' + element)
-        dimension_mulitplier = math.floor((np.cbrt(n / 4)))
+        argon_unit_cell_size = 4
+        dimension_mulitplier = math.floor((np.cbrt(n / argon_unit_cell_size)))
+
+        actual_n = argon_unit_cell_size * dimension_mulitplier**3 
+        if (actual_n != n):
+            warnings.warn('{} unit cell size causes deviation from desired n={}. Final atom count n={}'.format(element, str(n), str(actual_n)), RuntimeWarning)
         return list(itertools.repeat(dimension_mulitplier, 3))
 
     def calculate(self) -> Result:
-        energy = self._atoms.calc.get_potential_energy(self._atoms)
-
-        # atoms = Atoms(positions=[[0, 0, 0], [8, 0, 0]])
-        # calc = LennardJones(self._epsilon, self._sigma, self._r_cutoff, self._r_onset, stress=True)
-        # energy = calc.get_potential_energy(atoms)
-        # print(energy)
-
-        return Result([energy], None, None)
-    
-        # TODO: asax does not output atom-wise energies. do we actually need those?
-        # energies = [self._atoms.get_potential_energy()]
-        # forces = self._atoms.get_forces()
-        # stresses = [self._atoms.get_stress()]
-        # return Result(energies, forces, stresses)
+        energy = self._atoms.get_potential_energy()
+        forces = self._atoms.get_forces()
+        stress = self._atoms.get_stress()
+        # TODO: Implement atom-wise energies in ASAX
+        # TODO: Add atom-wise stresses to ASAX once implemented for JAX-MD
+        return Result([energy], forces, [stress])

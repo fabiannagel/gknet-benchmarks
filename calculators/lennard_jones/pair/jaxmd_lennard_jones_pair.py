@@ -6,7 +6,7 @@ from calculators.calculator import Calculator, Result
 
 import jax.numpy as jnp
 from jax import grad, random, jit
-from jax_md import space, energy
+from jax_md import space, energy, quantity
 from jax.config import config
 config.update("jax_enable_x64", True)
 
@@ -20,13 +20,8 @@ class JmdLennardJonesPair(Calculator):
         self._r_onset = r_onset
 
         self._displacement_fn, self._shift_fn = self._create_periodic_space()
-        self._atomwise_energy_fn = jit(energy.lennard_jones_pair(self._displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True))
-        self._total_energy_fn = jit(energy.lennard_jones_pair(self._displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=False))
-        
-        # TODO: How to define total_energy_fn = jnp.sum(atomwise_energy_fn)?
-        # How to compose JAX functions? The following evaluates it to a DeviceArray, causing an error as JAX expecteds a Callable
-        # self._total_energy_fn: Callable = lambda R: jnp.sum(self._atomwise_energy_fn(R))
-        
+        self._atomwise_energy_fn, self._total_energy_fn, self._force_fn = self._create_property_functions()
+
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> JmdLennardJonesPair:
         return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset)
@@ -46,12 +41,20 @@ class JmdLennardJonesPair(Calculator):
         displacement_fn, shift_fn = space.periodic(self._box_size)
         return jit(displacement_fn), jit(shift_fn)
 
+    def _create_property_functions(self):
+        atomwise_energy_fn = energy.lennard_jones_pair(self._displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)
+        total_energy_fn = lambda R: jnp.sum(atomwise_energy_fn(R))
+        force_fn = lambda R: quantity.force(total_energy_fn)(R)
+        return atomwise_energy_fn, total_energy_fn, force_fn
+
     def calculate(self) -> Result:
-        def wrapped_computation():
-            energies = self._atomwise_energy_fn(self._R)
-            forces = -grad(self._total_energy_fn)(self._R)
+        def wrapped_computation(R):
+            energies = self._atomwise_energy_fn(R)
+            forces = self._force_fn(R)
             stresses = None
             return energies, forces, stresses
         
-        energies, forces, stresses = jit(wrapped_computation())
+        # energies, forces, stresses = jit(wrapped_computation)(self._R)
+        energies, forces, stresses = wrapped_computation(self._R)
         return Result(energies, forces, stresses)    
+        # return None

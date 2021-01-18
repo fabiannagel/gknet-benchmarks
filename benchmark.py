@@ -17,26 +17,20 @@ def generate_system_sizes(z_max: int, unit_cell_size):
 
 
 box_size = 100
-n = 32
+n = 40
 sigma = 2.0
 epsilon = 1.5
 r_cutoff = 11.0
 r_onset = 6.0
 
+results = []
+
 # ase = AseLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff)
-# result = ase.calculate()
-# print(ase._R.shape)
+# results.append(ase.calculate())
 
 jmd = JmdLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
-# result = jmd.calculate()
-# print(result.energies.shape)
+results.append(jmd.calculate())
 
-asax = AsaxLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
+# asax = AsaxLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
+# results.append(asax.calculate())
 
-
-
-# jmd = JmdLennardJonesPair(box_size=box_size, n=n, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff, r_onset=r_onset)
-# jmd._R = ase._R
-
-# asax = AsaxLennardJonesPair(box_size=box_size, n=n, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff, r_onset=r_onset)
-# asax._R = ase._R
