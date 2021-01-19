@@ -49,10 +49,6 @@ class JmdLennardJonesPair(Calculator):
         key, subkey = random.split(key)
         return random.uniform(subkey, shape=(n, 3)) * scaling_factor
 
-    def _create_periodic_space(self):
-        displacement_fn, shift_fn = space.periodic(self._box_size)
-        return jit(displacement_fn), jit(shift_fn)
-
     def _initialize_strained_potential(self) -> Tuple[space.Space, Callable[[space.Array]]]:
         displacement_fn, shift_fn = space.periodic(self._box_size)
 
