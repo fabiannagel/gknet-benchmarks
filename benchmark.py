@@ -29,9 +29,9 @@ results = []
 # results.append(ase.calculate())
 
 jmd = JmdLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset, stress=True)
+
 r = jmd.calculate()
 results.append(r)
-
 print(r.energies)
 print(r.forces)
 print(r.stresses)

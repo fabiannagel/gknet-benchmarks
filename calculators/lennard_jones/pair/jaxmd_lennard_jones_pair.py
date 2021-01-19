@@ -27,6 +27,7 @@ class JmdLennardJonesPair(Calculator):
             self._atomwise_energy_fn, self._total_energy_fn, self._force_fn = self._create_property_functions()
             return
 
+        # (self._displacement_fn, self._shift_fn), self._properties_fn = self._create_stress_functions()        
         (self._displacement_fn, self._shift_fn), self._properties_fn = self._create_stress_functions()
 
     @classmethod
@@ -57,15 +58,21 @@ class JmdLennardJonesPair(Calculator):
                 transform = ones + strain
                 return _transform(transform, displacement_fn(Ra, Rb))
 
-            energy = self._get_energy_fn(displacement_under_strain, per_particle=False)
+            energy = self._get_energy_fn(displacement_under_strain, per_particle=True)
             return energy(R)
 
         def compute_properties(R: space.Array) -> space.Array:
             zeros = jnp.zeros((3, 3), dtype=jnp.double)
-            return value_and_grad(energy_under_strain, argnums=(0, 1))(R, zeros)
+            atomwise_energies = energy_under_strain(R, zeros)            
+            total_energy_fn = lambda R, zeros: jnp.sum(energy_under_strain(R, zeros))
+            forces = grad(total_energy_fn, argnums=(0))(R, zeros)
+            stress = grad(total_energy_fn, argnums=(1))(R, zeros)
+            return atomwise_energies, forces, stress
+            # return value_and_grad(energy_under_strain, argnums=(0, 1))(R, zeros)
 
+        return (jit(displacement_fn), jit(shift_fn)), compute_properties
         # TODO: How would this work with computing atomwise energies as a first step?
-        return (jit(displacement_fn), jit(shift_fn)), jit(compute_properties)
+        # return (jit(displacement_fn), jit(shift_fn)), jit(compute_properties)
 
     def _create_property_functions(self):
         atomwise_energy_fn = self._get_energy_fn(per_particle=True)
@@ -84,6 +91,9 @@ class JmdLennardJonesPair(Calculator):
             forces = self._force_fn(self._R)    
             return Result(energies, forces, None)    
 
-        energy, (R_grad, stress) = self._properties_fn(self._R)
-        forces = -R_grad
-        return Result([energy], forces, [stress])
+        # old style to unpack
+        # total_energy, (R_grad, stress) = self._properties_fn(self._R)
+        # forces = -R_grad
+
+        atomwise_energies, forces, stress = self._properties_fn(self._R)
+        return Result(atomwise_energies, forces, [stress])
