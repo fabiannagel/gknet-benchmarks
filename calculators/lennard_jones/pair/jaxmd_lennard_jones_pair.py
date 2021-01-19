@@ -21,6 +21,7 @@ class JmdLennardJonesPair(Calculator):
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset
         self._stress = stress
+        self._volume = box_size ** 3
 
         if not stress:
             self._displacement_fn, self._shift_fn = self._create_periodic_space()
@@ -66,7 +67,7 @@ class JmdLennardJonesPair(Calculator):
             atomwise_energies = energy_under_strain(R, zeros)            
             total_energy_fn = lambda R, zeros: jnp.sum(energy_under_strain(R, zeros))
             forces = grad(total_energy_fn, argnums=(0))(R, zeros)
-            stress = grad(total_energy_fn, argnums=(1))(R, zeros)
+            stress = grad(total_energy_fn, argnums=(1))(R, zeros) / self._volume
             return atomwise_energies, forces, stress
             # return value_and_grad(energy_under_strain, argnums=(0, 1))(R, zeros)
 
@@ -96,4 +97,4 @@ class JmdLennardJonesPair(Calculator):
         # forces = -R_grad
 
         atomwise_energies, forces, stress = self._properties_fn(self._R)
-        return Result(atomwise_energies, forces, [stress])
+        return Result(atomwise_energies, forces, stress)
