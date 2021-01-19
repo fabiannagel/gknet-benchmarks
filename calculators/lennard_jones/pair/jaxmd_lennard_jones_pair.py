@@ -23,13 +23,16 @@ class JmdLennardJonesPair(Calculator):
         self._stress = stress
         self._volume = box_size ** 3
 
-        if not stress:
-            self._displacement_fn, self._shift_fn = self._create_periodic_space()
-            self._atomwise_energy_fn, self._total_energy_fn, self._force_fn = self._create_property_functions()
-            return
+        (self._displacement_fn, self._shift_fn), self._properties_fn = self._initialize_jaxmd_primitives()
+        # if not stress:
+            # (self._displacement_fn, self._shift_fn), self._properties_fn = self._initialize_without_stress()
+            # return
+        # (self._displacement_fn, self._shift_fn), self._properties_fn = self._initialize_with_stress()()
 
-        # (self._displacement_fn, self._shift_fn), self._properties_fn = self._create_stress_functions()        
-        (self._displacement_fn, self._shift_fn), self._properties_fn = self._create_stress_functions()
+    def _initialize_jaxmd_primitives(self):
+        if not self._stress:
+            return self._initialize_equilibirium_potential()
+        return self._initialize_strained_potential()
 
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> JmdLennardJonesPair:
@@ -50,7 +53,7 @@ class JmdLennardJonesPair(Calculator):
         displacement_fn, shift_fn = space.periodic(self._box_size)
         return jit(displacement_fn), jit(shift_fn)
 
-    def _create_stress_functions(self) -> Tuple[space.Space, Callable[[space.Array]]]:
+    def _initialize_strained_potential(self) -> Tuple[space.Space, Callable[[space.Array]]]:
         displacement_fn, shift_fn = space.periodic(self._box_size)
 
         def energy_under_strain(R: space.Array, strain: space.Array) -> space.Array:
@@ -62,24 +65,31 @@ class JmdLennardJonesPair(Calculator):
             energy = self._get_energy_fn(displacement_under_strain, per_particle=True)
             return energy(R)
 
-        def compute_properties(R: space.Array) -> space.Array:
-            zeros = jnp.zeros((3, 3), dtype=jnp.double)
-            atomwise_energies = energy_under_strain(R, zeros)            
-            total_energy_fn = lambda R, zeros: jnp.sum(energy_under_strain(R, zeros))
-            forces = grad(total_energy_fn, argnums=(0))(R, zeros)
+        def compute_properties(R: space.Array):
+            zeros = jnp.zeros((3, 3), dtype=jnp.double)      
+
+            atomwise_energies_fn = energy_under_strain      
+            atomwise_energies = atomwise_energies_fn(R, zeros)            
+            total_energy_fn = lambda R, zeros: jnp.sum(atomwise_energies_fn(R, zeros))
+        
+            forces = grad(total_energy_fn, argnums=(0))(R, zeros) * -1
             stress = grad(total_energy_fn, argnums=(1))(R, zeros) / self._volume
             return atomwise_energies, forces, stress
             # return value_and_grad(energy_under_strain, argnums=(0, 1))(R, zeros)
 
-        return (jit(displacement_fn), jit(shift_fn)), compute_properties
-        # TODO: How would this work with computing atomwise energies as a first step?
-        # return (jit(displacement_fn), jit(shift_fn)), jit(compute_properties)
+        return (jit(displacement_fn), jit(shift_fn)), jit(compute_properties)
 
-    def _create_property_functions(self):
-        atomwise_energy_fn = self._get_energy_fn(per_particle=True)
-        total_energy_fn = lambda R: jnp.sum(atomwise_energy_fn(R))
-        force_fn = lambda R: quantity.force(total_energy_fn)(R)
-        return jit(atomwise_energy_fn), jit(total_energy_fn), jit(force_fn)     
+    def _initialize_equilibirium_potential(self) -> Tuple[space.Space, Callable[[space.Array]]]:
+        displacement_fn, shift_fn = space.periodic(self._box_size)
+
+        def compute_properties(R: space.Array):
+            atomwise_energies_fn = self._get_energy_fn(displacement_fn, per_particle=True)
+            atomwise_energies = atomwise_energies_fn(R) 
+            total_energy_fn = lambda R: jnp.sum(atomwise_energies_fn(R))
+            forces = grad(total_energy_fn)(R) * -1
+            return atomwise_energies, forces
+
+        return (jit(displacement_fn), jit(shift_fn)), jit(compute_properties)
 
     def _get_energy_fn(self, displacement_fn: Optional[energy.DisplacementFn], per_particle=True) -> Callable[[energy.Array], energy.Array]:
         if displacement_fn is None: 
@@ -88,9 +98,11 @@ class JmdLennardJonesPair(Calculator):
         
     def calculate(self) -> Result:
         if not self._stress:
-            energies = self._atomwise_energy_fn(self._R)
-            forces = self._force_fn(self._R)    
-            return Result(energies, forces, None)    
+            energies, forces = self._properties_fn(self._R)
+            return Result(energies, forces, None)
+            # energies = self._atomwise_energy_fn(self._R)
+            # forces = self._force_fn(self._R)    
+            # return Result(energies, forces, None)    
 
         # old style to unpack
         # total_energy, (R_grad, stress) = self._properties_fn(self._R)
