@@ -25,19 +25,21 @@ r_onset = 6.0
 
 results = []
 
-# ase = AseLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff)
-# results.append(ase.calculate())
+ase = AseLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff)
+results.append(ase.calculate())
 
 jmd = JmdLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset, stress=True)
-
 r = jmd.calculate()
-results.append(r)
-print(r.energies)
-print(r.forces)
-print(r.stresses)
 
-# asax = AsaxLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
-# results.append(asax.calculate())
+print(r.calculator.description)
+print(r.computation_time)
+
+# print(r.energies)
+# print(r.forces)
+# print(r.stresses)
+
+asax = AsaxLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
+results.append(asax.calculate())
 
 
 

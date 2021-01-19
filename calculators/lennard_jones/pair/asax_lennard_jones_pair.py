@@ -23,6 +23,10 @@ class AsaxLennardJonesPair(Calculator):
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset
 
+    @property
+    def description(self) -> str:
+        return "ASAX Lennard-Jones Calculator"
+
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AsaxLennardJonesPair:
         obj: AsaxLennardJonesPair = super().from_ase_atoms(atoms, sigma, float, epsilon, r_cutoff, r_onset)
@@ -55,10 +59,10 @@ class AsaxLennardJonesPair(Calculator):
             warnings.warn('{} unit cell size causes deviation from desired n={}. Final atom count n={}'.format(element, str(n), str(actual_n)), RuntimeWarning)
         return list(itertools.repeat(dimension_mulitplier, 3))
 
-    def calculate(self) -> Result:
+    def _compute_properties(self) -> Result:
         energy = self._atoms.get_potential_energy()
         forces = self._atoms.get_forces()
         stress = self._atoms.get_stress()
         # TODO: Implement atom-wise energies in ASAX
         # TODO: Add atom-wise stresses to ASAX once implemented for JAX-MD
-        return Result([energy], forces, [stress])
+        return Result(self, [energy], forces, [stress])

@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Callable, Optional, Tuple
 
 from ase.atoms import Atoms
+from jax.api import jacfwd
 from calculators.calculator import Calculator, Result
 
 from asax.utils import _transform
@@ -33,6 +34,10 @@ class JmdLennardJonesPair(Calculator):
         if not self._stress:
             return self._initialize_equilibirium_potential()
         return self._initialize_strained_potential()
+
+    @property
+    def description(self) -> str:
+        return "JAX-MD Lennard-Jones Calculator (stress={})".format(str(self._stress))
 
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> JmdLennardJonesPair:
@@ -70,7 +75,9 @@ class JmdLennardJonesPair(Calculator):
         
             forces = grad(total_energy_fn, argnums=(0))(R, zeros) * -1
             stress = grad(total_energy_fn, argnums=(1))(R, zeros) / self._volume
-            return atomwise_energies, forces, stress
+            stresses = jacfwd(atomwise_energies_fn, argnums=(1))(R, zeros) / self._volume
+            
+            return atomwise_energies, forces, stress, stresses
             # return value_and_grad(energy_under_strain, argnums=(0, 1))(R, zeros)
 
         return (jit(displacement_fn), jit(shift_fn)), jit(compute_properties)
@@ -92,10 +99,10 @@ class JmdLennardJonesPair(Calculator):
             displacement_fn = self._displacement_fn
         return energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=per_particle)       
         
-    def calculate(self) -> Result:
+    def _compute_properties(self) -> Result:
         if not self._stress:
             energies, forces = self._properties_fn(self._R)
-            return Result(energies, forces, None)
+            return Result(self, energies, forces, None)
             # energies = self._atomwise_energy_fn(self._R)
             # forces = self._force_fn(self._R)    
             # return Result(energies, forces, None)    
@@ -104,5 +111,5 @@ class JmdLennardJonesPair(Calculator):
         # total_energy, (R_grad, stress) = self._properties_fn(self._R)
         # forces = -R_grad
 
-        atomwise_energies, forces, stress = self._properties_fn(self._R)
-        return Result(atomwise_energies, forces, stress)
+        atomwise_energies, forces, stress, stresses = self._properties_fn(self._R)
+        return Result(self, atomwise_energies, forces, stresses)

@@ -22,6 +22,10 @@ class AseLennardJonesPair(Calculator):
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff
 
+    @property
+    def description(self):
+        return "ASE Lennard-Jones Calculator"
+
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float) -> AseLennardJonesPair:
         obj: AseLennardJonesPair = super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff)
@@ -55,8 +59,8 @@ class AseLennardJonesPair(Calculator):
             warnings.warn('{} unit cell size causes deviation from desired n={}. Final atom count n={}'.format(element, str(n), str(actual_n)), RuntimeWarning)
         return list(itertools.repeat(dimension_mulitplier, 3))
 
-    def calculate(self) -> Result:
+    def _compute_properties(self) -> Result:
         energies = self._atoms.get_potential_energies()
         forces = self._atoms.get_forces()
         stresses = self._atoms.get_stresses()
-        return Result(energies, forces, stresses)
+        return Result(self, energies, forces, stresses)
