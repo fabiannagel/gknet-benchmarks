@@ -60,7 +60,11 @@ class AseLennardJonesPair(Calculator):
         return list(itertools.repeat(dimension_mulitplier, 3))
 
     def _compute_properties(self) -> Result:
+        # TODO: Same duplicate code in ASAX, maybe mixin here as well?
+        energy = self._atoms.get_potential_energy()
         energies = self._atoms.get_potential_energies()
         forces = self._atoms.get_forces()
+        force = np.sum(forces)
+        stress = self._atoms.get_stress()
         stresses = self._atoms.get_stresses()
-        return Result(self, energies, forces, stresses)
+        return Result(self, energy, energies, force, forces, stress, stresses)

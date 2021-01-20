@@ -16,29 +16,30 @@ import math
 class AsaxLennardJonesPair(Calculator):
     _atoms: Atoms
 
-    def __init__(self, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> None:
+    def __init__(self, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> None:
         super().__init__(box_size, n, R)
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset
+        self._stress = stress
 
     @property
     def description(self) -> str:
         return "ASAX Lennard-Jones Calculator"
 
     @classmethod
-    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AsaxLennardJonesPair:
-        obj: AsaxLennardJonesPair = super().from_ase_atoms(atoms, sigma, float, epsilon, r_cutoff, r_onset)
+    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> AsaxLennardJonesPair:
+        obj: AsaxLennardJonesPair = super().from_ase_atoms(atoms, sigma, float, epsilon, r_cutoff, r_onset, stress)
         obj._atoms = atoms
-        obj._atoms.calc = LennardJones(obj._epsilon, obj._sigma, obj._r_cutoff, obj._r_onset, x64=True, stress=True)
+        obj._atoms.calc = LennardJones(obj._epsilon, obj._sigma, obj._r_cutoff, obj._r_onset, x64=True, stress=stress)
         return obj
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AsaxLennardJonesPair:
-        obj: AsaxLennardJonesPair = super().create_potential(box_size, n, R, sigma, epsilon, r_cutoff, r_onset)
+    def create_potential(cls, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> AsaxLennardJonesPair:
+        obj: AsaxLennardJonesPair = super().create_potential(box_size, n, R, sigma, epsilon, r_cutoff, r_onset, stress)
         obj._atoms = bulk('Ar', cubic=True) * obj._compute_supercell_multipliers('Ar', obj._n)
-        obj._atoms.calc = LennardJones(obj._epsilon, obj._sigma, obj._r_cutoff, obj._r_onset, x64=True, stress=True)
+        obj._atoms.calc = LennardJones(obj._epsilon, obj._sigma, obj._r_cutoff, obj._r_onset, x64=True, stress=stress)
         return obj
 
     def _generate_R(self, n: int, scaling_factor: float) -> jnp.ndarray:
@@ -60,9 +61,15 @@ class AsaxLennardJonesPair(Calculator):
         return list(itertools.repeat(dimension_mulitplier, 3))
 
     def _compute_properties(self) -> Result:
-        energy = self._atoms.get_potential_energy()
-        forces = self._atoms.get_forces()
-        stress = self._atoms.get_stress()
         # TODO: Implement atom-wise energies in ASAX
         # TODO: Add atom-wise stresses to ASAX once implemented for JAX-MD
-        return Result(self, [energy], forces, [stress])
+
+        energy = self._atoms.get_potential_energy()
+        # energies = self._atoms.get_potential_energies()
+        energies = None
+        forces = self._atoms.get_forces()
+        force = np.sum(forces)
+        stress = self._atoms.get_stress()
+        # stresses = self._atoms.get_stresses()
+        stresses = None
+        return Result(self, energy, energies, force, forces, stress, stresses)

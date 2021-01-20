@@ -10,19 +10,24 @@ import time
 @dataclass
 class Result():
     calculator: Calculator
+    energy: float
     energies: np.ndarray
+    force: float
     forces: np.ndarray
+    stress: float
     stresses: np.ndarray
     computation_time: float = None
 
-    def energy(self) -> float:
-        return np.sum(self.energies)
+    # TODO: Verify conservational laws on construction
 
-    def force(self) -> float:
-        return np.sum(self.forces)
-
-    def stress(self) -> float:
-        return np.sum(self.stresses)
+    #def energy(self) -> float:
+    #    return np.sum(self.energies)
+#
+    #def force(self) -> float:
+    #    return np.sum(self.forces)
+#
+    #def stress(self) -> float:
+    #    return np.sum(self.stresses)
     
 
 class Calculator(ABC):
