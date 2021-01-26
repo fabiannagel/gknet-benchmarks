@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 from ase.atoms import Atoms
 import numpy as np
 import time
@@ -32,27 +32,34 @@ class Result():
 
 class Calculator(ABC):
     _runtimes = []
+    _atoms: Optional[Atoms]
 
     def __init__(self, box_size: float, n: int, R: np.ndarray) -> None:
         self._box_size = box_size
         self._n = n
         self._R = R
         
-    @property
-    @abstractmethod
-    def description(self) -> str:
-        """A description string that can be used to outline the functionality of this calculator"""
-        pass
-
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, *args) -> cls:
-        return cls(atoms.get_cell(), len(atoms), atoms.get_positions(), args)
+        return cls(atoms.get_cell(), len(atoms), atoms.get_positions(), *args)
 
     @classmethod
     def create_potential(cls, box_size: float, n: int, R: np.ndarray, *args) -> cls:
         if R is None or len(R) == 0:
             R = cls._generate_R(cls, n, box_size)
         return cls(box_size, n, R, *args)
+
+    @property
+    @abstractmethod
+    def description(self) -> str:
+        """A description string that can be used to outline the functionality of this calculator. Useful for plots etc."""
+        pass
+    
+    @property
+    @abstractmethod
+    def pairwise_distances(self) -> np.ndarray:     # shape (self._n, 3)    TODO: Dynamic numpy types in Python?
+        """Returns a matrix of pairwise atom distances of shape (n, 3)."""
+        pass
     
     def _generate_R(self, n: int, scaling_factor: float) -> np.ndarray:
         print("numpy PRNG")

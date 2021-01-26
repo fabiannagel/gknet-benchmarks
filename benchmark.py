@@ -31,11 +31,11 @@ results = []
 # ase = AseLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff)
 # results.append(ase.calculate())
 
-jmd = JmdLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset, stress=True)
-r = jmd.calculate()
+# jmd = JmdLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset, stress=True)
+# r = jmd.calculate()
 
-print(r.calculator.description)
-print(r.computation_time)
+# print(r.calculator.description)
+# print(r.computation_time)
 
 # print(r.energies)
 # print(r.forces)
