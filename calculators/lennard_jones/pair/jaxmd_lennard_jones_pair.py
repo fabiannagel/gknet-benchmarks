@@ -74,11 +74,17 @@ class JmdLennardJonesPair(Calculator):
         return random.uniform(subkey, shape=(n, 3)) * scaling_factor
 
 
-    def _initialize_strained_potential(self) -> Tuple[space.Space, Callable[[space.Array]]]:
-        displacement_fn, shift_fn = space.periodic(self._box_size)
+    def _initialize_strained_potential(self, displacement_fn: Optional[Callable]) -> Tuple[space.Space, Callable[[space.Array]]]:
+        print("Tracing _initialize_strained_potential")
+        
+        if displacement_fn is None:
+            displacement_fn, _ = space.periodic(self._box_size)
 
         def energy_under_strain(R: space.Array, strain: space.Array) -> space.Array:
+            print("Tracing energy_under_strain")
+
             def displacement_under_strain(Ra: space.Array, Rb: space.Array, **unused_kwargs) -> space.Array:
+                print("Tracing displacement_under_strain")
                 ones = jnp.eye(N=3, M=3, dtype=jnp.double)
                 transform = ones + strain
                 return _transform(transform, displacement_fn(Ra, Rb))
@@ -87,6 +93,8 @@ class JmdLennardJonesPair(Calculator):
             return energy(R)
 
         def compute_properties(R: space.Array) -> Tuple[float, float, float, float, float, float]:
+            print("Tracing compute_properties")
+
             zeros = jnp.zeros((3, 3), dtype=jnp.double)      
 
             atomwise_energies_fn = energy_under_strain      
@@ -101,7 +109,7 @@ class JmdLennardJonesPair(Calculator):
             stresses = jacfwd(atomwise_energies_fn, argnums=(1))(R, zeros) / self._volume            
             return total_energy, atomwise_energies, force, forces, stress, stresses
 
-        return (jit(displacement_fn), jit(shift_fn)), jit(compute_properties)
+        return jit(displacement_fn), jit(compute_properties)
 
 
     def _initialize_equilibirium_potential(self, displacement_fn: Optional[Callable]) -> Tuple[space.Space, Callable[[space.Array]]]:

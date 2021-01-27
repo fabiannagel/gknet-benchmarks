@@ -1,35 +1,31 @@
-from tests.base_test import BaseTest
-from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
-from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
+from unittest.case import skip
 from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
+from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
+from tests.base_test import BaseTest
 import numpy as np
 
-
-class ComparisonWithoutStressTest(BaseTest):
+class ComparisonWithStress(BaseTest):
 
     def __init__(self, methodName: str) -> None:
         super().__init__(methodName)
-        
-        # 4, 32, 500
         self._n = 500
         self._sigma = 2.0
         self._epsilon = 1.5
         self._r_cutoff = 11.0
         self._r_onset = 6.0
-        
-        self._ase = AseLennardJonesPair.create_equilibrium_potential(self._n, self._sigma, self._epsilon, self._r_cutoff, self._r_onset)
-        
+        self._ase = AseLennardJonesPair.create_equilibrium_potential(self._n, self._sigma, self._epsilon, self._r_cutoff, self._r_onset)    
         r_cutoff_adjusted = self._r_cutoff / self._sigma
         r_onset_adjusted = self._r_onset   / self._sigma
-        self._jmd = JmdLennardJonesPair.from_ase_atoms(self._ase._atoms, self._sigma, self._epsilon, r_cutoff_adjusted, r_onset_adjusted, stress=False)
+        self._jmd = JmdLennardJonesPair.from_ase_atoms(self._ase._atoms, self._sigma, self._epsilon, r_cutoff_adjusted, r_onset_adjusted, stress=True)
+
 
     def setUp(self) -> None:
         self._ase_result = self._ase.calculate()
         self._jmd_result = self._jmd.calculate()
 
+    @skip
     def test_energy_equivalence(self):
-        # TODO: Probably due to the neighbor list LJ implementation in ASE
-        # print(self._ase_result.energy, self._jmd_result.energy)
+        # TODO: Max error is output modulo numerical noise or something.
         self.assert_all_close(self._ase_result.energy, self._jmd_result.energy)
     
     def test_system_sizes_equivalent(self):
@@ -58,4 +54,12 @@ class ComparisonWithoutStressTest(BaseTest):
         # Disregarding the first call: Does the jitted function's runtime stay consistent?
         max_relative_deviation = np.min(jitted_runtimes) / np.max(jitted_runtimes)      # maximum relative deviation between the fastest and slowest run
         self.assertLessEqual(max_relative_deviation, 0.5)                               # is the fastest run at most 50% quicker than the slowest? 
-            
+    
+    @skip
+    def test_property_computation_jit_speedup(self):
+        """
+        Here, we want to test whether the compiler can successfully jit the logic required to compute stresses with JAX-MD.
+        There should be a significant speedup after the first call and tracing prints should be removed.
+        The latter is probably annoying to use for testing. What is a better way?
+        """
+        pass

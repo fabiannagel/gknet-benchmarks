@@ -41,7 +41,9 @@ class Calculator(ABC):
         
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, *args) -> cls:
-        return cls(atoms.get_cell(), len(atoms), atoms.get_positions(), *args)
+        # TODO: This will break for non-cubic unit cells. Simply check if cubic, fail otherwise?
+        box_size = atoms.get_cell()[0][0] 
+        return cls(box_size, len(atoms), atoms.get_positions(), *args)
 
     @classmethod
     def create_potential(cls, box_size: float, n: int, R: np.ndarray, *args) -> cls:
