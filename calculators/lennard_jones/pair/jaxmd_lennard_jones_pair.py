@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Callable, Optional, Tuple
+from functools import partial
 
 from ase.atoms import Atoms
 from jax.api import jacfwd, vmap
@@ -50,8 +51,8 @@ class JmdLennardJonesPair(Calculator):
     def description(self) -> str:
         return "JAX-MD Lennard-Jones Calculator (stress={})".format(str(self._stress))
 
-    # TODO: JIT annotation!
     @property
+    @partial(jit, static_argnums=0)
     def pairwise_distances(self):
         # displacement_fn takes two vectors Ra and Rb
         # space.map_product() vmaps it twice along rows and columns such that we can input matrices
