@@ -28,6 +28,7 @@ class ComparisonWithoutStressTest(TestCase):
         r_onset_adjusted = self._r_onset   / self._sigma
         self._jmd = JmdLennardJonesPair.from_ase_atoms(self._ase._atoms, self._sigma, self._epsilon, r_cutoff_adjusted, r_onset_adjusted, stress=False)
 
+
     def setUp(self) -> None:
         self._ase_result = self._ase.calculate()
         self._jmd_result = self._jmd.calculate()
@@ -43,6 +44,7 @@ class ComparisonWithoutStressTest(TestCase):
 
     def test_energy_equivalence(self):
         # TODO: Probably due to the neighbor list LJ implementation in ASE
+        print(self._ase_result.energy, self._jmd_result.energy)
         self.allClose(self._ase_result.energy, self._jmd_result.energy)
     
     def test_system_sizes_equivalent(self):

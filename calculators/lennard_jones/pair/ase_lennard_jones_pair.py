@@ -27,7 +27,7 @@ class AseLennardJonesPair(Calculator):
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AseLennardJonesPair:
         obj: AseLennardJonesPair = super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset)
         obj._atoms = atoms
-        obj._atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=r_cutoff, ro=r_onset)
+        obj._atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=r_cutoff, ro=r_onset, smooth=True)
         return obj
     
     @classmethod

@@ -15,6 +15,12 @@ config.update("jax_enable_x64", True)
 
 class JmdLennardJonesPair(Calculator):
 
+    # TODO: box_size and displacement_fn are two different ways to initialize
+    # Either we can create our own displacement_fn via space.periodic(box_size) ...
+    # ... or use the passed displacement_fn that is used when importing an ASE object
+    # Unite in new parameter box_size_or_displacement? What is the proper way to do this?
+
+    # TODO: Create lightweight type for LJ parameters?
     def __init__(self, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, displacement_fn: Optional[Callable]):
         super().__init__(box_size, n, R)
         self._sigma = sigma
@@ -44,6 +50,7 @@ class JmdLennardJonesPair(Calculator):
     def description(self) -> str:
         return "JAX-MD Lennard-Jones Calculator (stress={})".format(str(self._stress))
 
+    # TODO: JIT annotation!
     @property
     def pairwise_distances(self):
         # displacement_fn takes two vectors Ra and Rb
