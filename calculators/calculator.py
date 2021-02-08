@@ -22,10 +22,10 @@ class Result():
 
     #def energy(self) -> float:
     #    return np.sum(self.energies)
-#
+
     #def force(self) -> float:
     #    return np.sum(self.forces)
-#
+
     #def stress(self) -> float:
     #    return np.sum(self.stresses)
     
@@ -34,22 +34,26 @@ class Calculator(ABC):
     _runtimes = []
     _atoms: Optional[Atoms]
 
-    def __init__(self, box_size: float, n: int, R: np.ndarray) -> None:
-        self._box_size = box_size
+    def __init__(self, box: np.array, n: int, R: np.ndarray, computes_stress: bool) -> None:
+        self._box = box
         self._n = n
         self._R = R
+        self._computes_stress = computes_stress
         
+
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, *args) -> cls:
-        # TODO: This will break for non-cubic unit cells. Simply check if cubic, fail otherwise?
-        box_size = atoms.get_cell()[0][0] 
-        return cls(box_size, len(atoms), atoms.get_positions(), *args)
+        box = atoms.get_cell().array * np.eye(3)
+        return cls(box, len(atoms), atoms.get_positions(), *args)
+
 
     @classmethod
     def create_potential(cls, box_size: float, n: int, R: np.ndarray, *args) -> cls:
         if R is None or len(R) == 0:
             R = cls._generate_R(cls, n, box_size)
-        return cls(box_size, n, R, *args)
+        box = box_size * np.eye(3)
+        return cls(box, n, R, *args)
+
 
     @property
     @abstractmethod
@@ -63,17 +67,41 @@ class Calculator(ABC):
         """Returns a matrix of pairwise atom distances of shape (n, 3)."""
         pass
     
+
+    @property
+    def box(self) -> np.array:
+        return self._box
+
+
+    @property
+    def n(self) -> int:
+        return self._n
+
+
+    @property
+    def R(self):
+        return self._R
+
+
+    @property
+    def computes_stress(self) -> bool:
+        return self._computes_stress
+
+    
     def _generate_R(self, n: int, scaling_factor: float) -> np.ndarray:
         print("numpy PRNG")
         return np.random.uniform(size=(n, 3)) * scaling_factor
+
 
     @abstractmethod
     def _generate_R(self, n: int, scaling_factor: float) -> np.ndarray:
         pass    
 
+
     @abstractmethod
     def _compute_properties(self) -> Result: 
         pass
+
 
     def calculate(self) -> Result:
         start = time.time()
@@ -83,5 +111,3 @@ class Calculator(ABC):
 
         result.computation_time = elapsed_seconds
         return result
-
-

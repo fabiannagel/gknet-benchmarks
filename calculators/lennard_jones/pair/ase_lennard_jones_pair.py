@@ -17,7 +17,7 @@ import math
 class AseLennardJonesPair(Calculator):
     
     def __init__(self, box_size: float, n: int, R: np.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float):
-        super().__init__(box_size, n, R)
+        super().__init__(box_size, n, R, True)
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff

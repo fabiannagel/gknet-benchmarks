@@ -17,7 +17,7 @@ class AsaxLennardJonesPair(Calculator):
     _atoms: Atoms
 
     def __init__(self, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> None:
-        super().__init__(box_size, n, R)
+        super().__init__(box_size, n, R, stress)
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff
