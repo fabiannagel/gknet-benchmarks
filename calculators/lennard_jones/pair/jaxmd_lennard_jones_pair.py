@@ -29,7 +29,7 @@ class JmdLennardJonesPair(Calculator):
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff
-        self._r_onset = r_onset
+        self._r_onset = r_onset 
         self._stress = stress
         self._volume = box_size ** 3
         self._displacement_fn, self._properties_fn = self._initialize_potential(displacement_fn, stress)
@@ -40,8 +40,8 @@ class JmdLennardJonesPair(Calculator):
         return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> JmdLennardJonesPair:
-        return super().create_potential(box_size, n, R, sigma, epsilon, r_cutoff, r_onset, stress)
+    def create_potential(cls, box_size: float, n: int, R: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, displacement_fn: Optional[Callable]) -> JmdLennardJonesPair:
+        return super().create_potential(box_size, n, R, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
 
     @property
     def description(self) -> str:
@@ -76,7 +76,7 @@ class JmdLennardJonesPair(Calculator):
         energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)       
         strained_box_energy_fn = lambda epsilon, R: energy_fn(R, box=self._box + epsilon)
         
-        def compute_properties_with_stress(epsilon: jnp.array, R: space.Array):
+        def compute_properties_with_stress(epsilon: jnp.array, R: space.Array) -> Tuple[jnp.array, float, jnp.array, jnp.array]:
             print("Tracing: compute_properties_with_stress")
             total_energy_fn = lambda epsilon, R: jnp.sum(strained_box_energy_fn(epsilon, R))
             force_fn = grad(total_energy_fn, argnums=1)
@@ -84,11 +84,11 @@ class JmdLennardJonesPair(Calculator):
             stress = stress_fn(epsilon, R) / jnp.linalg.det(self._box)
             return strained_box_energy_fn(epsilon, R), total_energy_fn(epsilon, R), force_fn(epsilon, R) * -1, stress
 
-        def compute_properties(R: space.Array):
+        def compute_properties(R: space.Array) -> Tuple[jnp.array, float, jnp.array]:
             print("Tracing: compute_properties")
             total_energy_fn = lambda R: jnp.sum(energy_fn(R))
             force_fn = grad(total_energy_fn)
-            return strained_box_energy_fn(R), total_energy_fn(R), force_fn(R) * -1, None
+            return energy_fn(R), total_energy_fn(R), force_fn(R) * -1
 
         if stress:
             return jit(displacement_fn), jit(compute_properties_with_stress)
@@ -96,8 +96,8 @@ class JmdLennardJonesPair(Calculator):
 
     def _compute_properties(self) -> Result:
         if self._stress:
-            energies, energy, force, stress = self._properties_fn(jnp.zeros((3, 3)), self._R)
-            return Result(self, energy, energies, force, None, stress, None)
+            energies, energy, forces, stress = self._properties_fn(jnp.zeros((3, 3)), self._R)
+            return Result(self, energy, energies, None, forces, stress, None)
         
-        energies, energy, force = self._properties_fn(jnp.zeros((3, 3)), self._R)
-        return Result(self, energy, energies, force, None, None, None)
+        energies, energy, forces = self._properties_fn(self._R)
+        return Result(self, energy, energies, None, forces, None, None)

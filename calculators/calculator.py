@@ -48,7 +48,7 @@ class Calculator(ABC):
 
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R: np.ndarray, *args) -> cls:
+    def create_potential(cls, box_size: float, n: int, R: Optional[np.ndarray], *args) -> cls:
         if R is None or len(R) == 0:
             R = cls._generate_R(cls, n, box_size)
         box = box_size * np.eye(3)

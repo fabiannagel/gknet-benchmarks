@@ -10,6 +10,11 @@ from .test_utils import *
 
 
 class ComparisonTest(BaseTest):
+    '''
+    Refers to the test case in which the results of multiple calculators are assessed.
+    This allows for testing any combination of framework and parameter setting that could be of interest.
+    ''' 
+
     _calculators: List[Calculator]
     _results: List[Result]
 
@@ -48,44 +53,4 @@ class ComparisonTest(BaseTest):
     def test_pairwise_distances_equality(self):
         pairwise_distances = [c.pairwise_distances for c in self._calculators]
         assert_arrays_all_close(pairwise_distances)
-
-    @skip
-    def test_pairwise_distance_jit_speedup(self):
-        # TODO: Move to unit test base class
-
-        compute_dR_fn = lambda: self._jmd.pairwise_distances
-        runtimes = self.get_runtimes(compute_dR_fn)
-        non_jitted_runtime = runtimes[0]        
-        jitted_runtimes = runtimes[1:]
-
-        # Is the first function call significantly slower than the rest?
-        # first_call_slowdown = non_jitted_runtime / np.mean(jitted_runtimes)
-        # self.assertGreaterEqual(first_call_slowdown, 500)                                # is the first call at least 500x slower than the rest?
-        self.assert_mean_jit_speedup(non_jitted_runtime, jitted_runtimes)
-
-        # Disregarding the first call: Does the jitted function's runtime stay consistent?
-        max_relative_deviation = np.min(jitted_runtimes) / np.max(jitted_runtimes)      # maximum relative deviation between the fastest and slowest run
-        self.assertLessEqual(max_relative_deviation, 0.5)                               # is the fastest run at most 50% quicker than the slowest? 
-    
-    @skip
-    @chex.variants(with_jit=True, without_jit=True)
-    def test_jit_result_correctness(self):       
-        # TODO: Move to unit test base class
-
-        # TODO: properties_fn is by default already jitted. is chex still able to test an un-jitted version here?
-
-        jmd_property_fn = self._jax_md._properties_fn
-        properties = jmd_property_fn(*self._property_args)
-
-        jmd_var_property_fn = self.variant(jmd_property_fn)
-        var_properties = jmd_var_property_fn(*self._property_args)
-
-        self.assertEqual(properties, var_properties)
-        
-        # TODO: Same for asax
-
-
-    
-
-
        

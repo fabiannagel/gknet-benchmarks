@@ -1,7 +1,7 @@
 from __future__ import annotations
 import warnings
 
-from typing import List
+from typing import List, Optional
 from calculators.calculator import Calculator, Result
 
 from ase import Atoms
@@ -38,7 +38,7 @@ class AseLennardJonesPair(Calculator):
     
     # TODO: Decide whether to keep this
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R: np.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AseLennardJonesPair:        
+    def create_potential(cls, box_size: float, n: int, R: Optional[np.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AseLennardJonesPair:        
         # obj: AseLennardJonesPair = super().create_potential(box_size, n, R, sigma, epsilon, r_cutoff, r_onset)
         # obj._atoms = bulk('Ar', cubic=True) * obj._compute_supercell_multipliers('Ar', obj._n)
         
