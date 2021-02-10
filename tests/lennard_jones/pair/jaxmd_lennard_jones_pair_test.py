@@ -7,9 +7,10 @@ import numpy as np
 import jax.numpy as jnp
 from jax import random
 from ... import test_utils
+import chex
 
 
-class JmdLennardJonesPairTest(unittest.TestCase):
+class JmdLennardJonesPairTest(chex.TestCase):
     _n = 500
     _box_size = 100
     _sigma = 2.0
@@ -34,14 +35,14 @@ class JmdLennardJonesPairTest(unittest.TestCase):
 
 
     def test_atom_positions_shape_and_equality(self):
-        self.assertEqual(self._calculator.R.shape, (500, 3))
-        self.assertEqual(self._stress_calculator.R.shape, (500, 3))
+        chex.assert_shape(self._calculator.R, (500, 3))
+        chex.assert_shape(self._stress_calculator.R.shape, (500, 3))
         np.testing.assert_array_equal(self._calculator.R, self._stress_calculator.R)   
         
     
     def test_pairwise_distances_shape_and_equality(self):
-        self.assertEqual(self._calculator.pairwise_distances.shape, (500, 500))
-        self.assertEqual(self._stress_calculator.pairwise_distances.shape, (500, 500))
+        chex.assert_shape(self._calculator.pairwise_distances, (500, 500))
+        chex.assert_shape(self._stress_calculator.pairwise_distances, (500, 500))
         np.testing.assert_array_equal(self._calculator.pairwise_distances, self._stress_calculator.pairwise_distances)
         
 
@@ -62,13 +63,13 @@ class JmdLennardJonesPairTest(unittest.TestCase):
 
 
     def test_energies_equality(self):
-        self.assertEqual(self._result.energies.shape, (500,))
-        self.assertEqual(self._stress_result.energies.shape, (500,))
+        chex.assert_shape(self._result.energies, (500,))
+        chex.assert_shape(self._stress_result.energies, (500,))
         np.testing.assert_allclose(self._result.energies, self._stress_result.energies)
 
 
     def test_forces_equality(self):
-        self.assertEqual(self._result.forces.shape, (500, 3))
-        self.assertEqual(self._stress_result.forces.shape, (500, 3))
+        chex.assert_shape(self._result.forces, (500, 3))
+        chex.assert_shape(self._stress_result.forces, (500, 3))
         np.testing.assert_allclose(self._result.forces, self._stress_result.forces)
         
