@@ -6,10 +6,10 @@ from utils import new_get_displacement
 from calculators.calculator import Calculator, Result
 from ase.atoms import Atoms
 from jax_md import space, energy, quantity
-from periodic_general import periodic_general
+from periodic_general import periodic_general, transform
 import jax.numpy as jnp
 from jax import grad, random, jit, value_and_grad
-from jax.api import vmap
+from jax.api import jacfwd, vmap
 from jax.config import config
 config.update("jax_enable_x64", True)
 
@@ -80,21 +80,27 @@ class JmdLennardJonesPair(Calculator):
         
         energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)       
         
-        def compute_properties_with_stress(deformation: jnp.array, R: space.Array):    
-            # strained_box = jnp.dot(jnp.eye(3) + (deformation + deformation.T)*0.5, self._box)
-            deformation_energy_fn = lambda deformation, R: energy_fn(R, box=jnp.dot(jnp.eye(3) + (deformation + deformation.T)*0.5, self._box))
-            total_deformation_energy_fn = lambda deformation, R: jnp.sum(deformation_energy_fn(deformation, R))
-            
+        def compute_properties_with_stress(deformation: jnp.array, R: space.Array):   
+            # We do two things here:
+            # 1) Set the box under strain using a symmetrized deformation tensor
+            # 2) Override the box in the energy function
+            symmetrized_strained_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, self._box)            
+            deformation_energy_fn = lambda deformation, R: energy_fn(R, box=symmetrized_strained_box_fn(deformation))
+
+            total_deformation_energy_fn = lambda deformation, R: jnp.sum(deformation_energy_fn(deformation, R))            
             deformation_force_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=1)(deformation, R) * -1
+
             stress_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
+            stresses_fn = lambda deformation, R: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
 
             total_energy = total_deformation_energy_fn(deformation, R)
             atomwise_energies = deformation_energy_fn(deformation, R)
             forces = deformation_force_fn(deformation, R)
             force = jnp.sum(forces)
             stress = stress_fn(deformation, R)
+            stresses = stresses_fn(deformation, R)
 
-            return total_energy, atomwise_energies, force, forces, stress
+            return total_energy, atomwise_energies, force, forces, stress, stresses
 
 
         def compute_properties(R: space.Array) -> Tuple[jnp.array, float, jnp.array]:
@@ -116,8 +122,8 @@ class JmdLennardJonesPair(Calculator):
     def _compute_properties(self) -> Result:
         if self._stress:
             deformation = jnp.zeros_like(self._box)
-            total_energy, atomwise_energies, force, forces, stress = self._properties_fn(deformation, self._R)
-            return Result(self, total_energy, atomwise_energies, force, forces, stress, None)
+            total_energy, atomwise_energies, force, forces, stress, stresses = self._properties_fn(deformation, self._R)
+            return Result(self, total_energy, atomwise_energies, force, forces, stress, stresses)
         
         total_energy, atomwise_energies, force, forces = self._properties_fn(self._R)
         return Result(self, total_energy, atomwise_energies, force, forces, None, None)

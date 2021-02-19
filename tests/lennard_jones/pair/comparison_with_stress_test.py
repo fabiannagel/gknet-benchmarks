@@ -84,3 +84,8 @@ class ComparisonWithStress(unittest.TestCase):
         assert_arrays_all_close(stress, atol=1E-17)
 
 
+    def test_stresses_equality(self):
+        stresses = [r.stresses for r in self._results]
+        assert_arrays_all_close(stresses, atol=1E-17)
+
+
