@@ -31,6 +31,7 @@ class JmdLennardJonesPair(Calculator):
         self._stress = stress
         self._displacement_fn, self._properties_fn = self._initialize_potential(displacement_fn, stress)
 
+
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, adjust_radii: bool) -> JmdLennardJonesPair:
         displacement_fn = new_get_displacement(atoms)
@@ -42,15 +43,18 @@ class JmdLennardJonesPair(Calculator):
 
         return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
 
+
     @classmethod
     # TODO: is there a use case here in which displacement_fn != None?
     def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, displacement_fn: Optional[Callable]) -> JmdLennardJonesPair:
         '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
         return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
 
+
     @property
     def description(self) -> str:
         return "JAX-MD Lennard-Jones Calculator (stress={})".format(str(self._stress))
+
 
     @property
     @partial(jit, static_argnums=0)
@@ -68,11 +72,13 @@ class JmdLennardJonesPair(Calculator):
         vectorized_fn = vmap(vmap(magnitude_fn, in_axes=0), in_axes=0)
         return vectorized_fn(dR_dimensionwise)
 
+
     def _generate_R(self, n: int, scaling_factor: float) -> jnp.ndarray:
          # TODO: Build a global service to manage and demand PRNGKeys for JAX-based simulations
         key = random.PRNGKey(0)
         key, subkey = random.split(key)
         return random.uniform(subkey, shape=(n, 3)) * scaling_factor
+
 
     def _initialize_potential(self, displacement_fn: Optional[Callable], stress: bool) -> Tuple[space.Space, Callable[[space.Array]]]:
         if displacement_fn is None:
@@ -118,6 +124,7 @@ class JmdLennardJonesPair(Calculator):
         if stress:
             return displacement_fn, compute_properties_with_stress
         return displacement_fn, compute_properties
+
 
     def _compute_properties(self) -> Result:
         if self._stress:

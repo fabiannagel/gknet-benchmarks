@@ -23,21 +23,22 @@ class AseLennardJonesPair(Calculator):
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset
 
+
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AseLennardJonesPair:
         obj: AseLennardJonesPair = super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset)
         obj._atoms = atoms
         obj._atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=r_cutoff, ro=r_onset, smooth=True)
         return obj    
-    
+
+
     @classmethod
     def create_potential(cls, n: int, sigma: float, epsilon: float, r_cutoff: Optional[float], r_onset: Optional[float]) -> AseLennardJonesPair:
         '''
         Create a cubic Argon bulk structure using ASE.
         If omitted, r_cutoff is set to half the maximum super cell lattice vector magnitude.
         If omitted, r_onset is set to 0.8 * r_cutoff
-        '''
-        
+        '''        
         atoms = bulk('Ar', cubic=True) * cls._compute_supercell_multipliers('Ar', n)
         
         if r_cutoff is None:
@@ -51,22 +52,27 @@ class AseLennardJonesPair(Calculator):
         # self._atoms.set_cell(1.05 * self._atoms.get_cell(), scale_atoms=True)    
         return cls.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset)
 
+
     @property
     def r_onset(self) -> float:
         return self._r_onset
+
 
     @property
     def r_cutoff(self) -> float:
         return self._r_cutoff
 
+
     @property
     def description(self):
         return "ASE Lennard-Jones Calculator"
 
+
     @property
     def pairwise_distances(self):
         return self._atoms.get_all_distances(mic=True) 
-        
+
+
     def _generate_R(self, n: int, scaling_factor: float) -> np.ndarray:
         print("ASE/NumPy PRNG")
         return np.random.uniform(size=(n, 3)) * scaling_factor
@@ -92,3 +98,4 @@ class AseLennardJonesPair(Calculator):
         stress = self._atoms.get_stress(voigt=False)
         stresses = self._atoms.get_stresses(voigt=False)
         return Result(self, energy, energies, force, forces, stress, stresses)
+        

@@ -25,8 +25,6 @@ class ComparisonWithoutStress(unittest.TestCase):
 
 
     def _create_jaxmd_calculator(self, atoms: Atoms) -> JmdLennardJonesPair:
-        # r_cutoff_adjusted = self._r_cutoff / self._sigma
-        # r_onset_adjusted = self._r_onset   / self._sigma
         return JmdLennardJonesPair.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, adjust_radii=True)
 
 
@@ -79,4 +77,4 @@ class ComparisonWithoutStress(unittest.TestCase):
     def test_forces_equality(self):
         forces = [r.forces for r in self._results]
         assert_arrays_all_close(forces, atol=1E-14)
-
+        
