@@ -1,20 +1,18 @@
 from __future__ import annotations
 from typing import Callable, Optional, Tuple
 from functools import partial
+from utils import new_get_displacement
 
-from ase.atoms import Atoms
-from jax.api import jacfwd, vmap
 from calculators.calculator import Calculator, Result
-
-from asax.utils import _transform, get_displacement
-
+from ase.atoms import Atoms
+from jax_md import space, energy, quantity
+from periodic_general import periodic_general
 import jax.numpy as jnp
 from jax import grad, random, jit, value_and_grad
-from jax_md import space, energy, quantity
+from jax.api import vmap
 from jax.config import config
 config.update("jax_enable_x64", True)
 
-from periodic_general import periodic_general
 
 class JmdLennardJonesPair(Calculator):
 
@@ -31,17 +29,24 @@ class JmdLennardJonesPair(Calculator):
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset 
         self._stress = stress
-        self._volume = box_size ** 3
         self._displacement_fn, self._properties_fn = self._initialize_potential(displacement_fn, stress)
 
     @classmethod
-    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> JmdLennardJonesPair:
-        displacement_fn = get_displacement(atoms)
+    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, adjust_radii: bool) -> JmdLennardJonesPair:
+        displacement_fn = new_get_displacement(atoms)
+        
+        # JAX-MD's LJ implementation multiplies onset and cutoff by sigma. To be compatible w/ ASE's implementation, we need to perform these adjustments.
+        if adjust_radii:
+            r_onset /= sigma
+            r_cutoff /= sigma
+
         return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, displacement_fn: Optional[Callable]) -> JmdLennardJonesPair:
-        return super().create_potential(box_size, n, R, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
+    # TODO: is there a use case here in which displacement_fn != None?
+    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, displacement_fn: Optional[Callable]) -> JmdLennardJonesPair:
+        '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
+        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
 
     @property
     def description(self) -> str:
@@ -74,10 +79,10 @@ class JmdLennardJonesPair(Calculator):
             displacement_fn, _ = periodic_general(self._box)
         
         energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)       
-        strained_box_energy_fn = lambda epsilon, R: energy_fn(R, box=self._box + epsilon)
         
         def compute_properties_with_stress(epsilon: jnp.array, R: space.Array) -> Tuple[jnp.array, float, jnp.array, jnp.array]:
-            print("Tracing: compute_properties_with_stress")
+            strained_box_energy_fn = lambda epsilon, R: energy_fn(R, box=self._box + epsilon)
+
             total_energy_fn = lambda epsilon, R: jnp.sum(strained_box_energy_fn(epsilon, R))
             force_fn = grad(total_energy_fn, argnums=1)
             stress_fn = grad(total_energy_fn, argnums=0) 
@@ -85,10 +90,19 @@ class JmdLennardJonesPair(Calculator):
             return strained_box_energy_fn(epsilon, R), total_energy_fn(epsilon, R), force_fn(epsilon, R) * -1, stress
 
         def compute_properties(R: space.Array) -> Tuple[jnp.array, float, jnp.array]:
-            print("Tracing: compute_properties")
-            total_energy_fn = lambda R: jnp.sum(energy_fn(R))
-            force_fn = grad(total_energy_fn)
-            return energy_fn(R), total_energy_fn(R), force_fn(R) * -1
+            # print("compute properties, no stress:")
+
+            # total_energy_fn = lambda R: jnp.sum(energy_fn(R))
+
+            total_energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=False)
+            forces_fn = quantity.force(total_energy_fn)
+
+            total_energy = total_energy_fn(R)
+            atomwise_energies = energy_fn(R)
+            forces = forces_fn(R)
+            force = jnp.sum(forces)
+
+            return total_energy, atomwise_energies, force, forces
 
         if stress:
             return jit(displacement_fn), jit(compute_properties_with_stress)
@@ -99,5 +113,5 @@ class JmdLennardJonesPair(Calculator):
             energies, energy, forces, stress = self._properties_fn(jnp.zeros((3, 3)), self._R)
             return Result(self, energy, energies, None, forces, stress, None)
         
-        energies, energy, forces = self._properties_fn(self._R)
-        return Result(self, energy, energies, None, forces, None, None)
+        total_energy, atomwise_energies, force, forces = self._properties_fn(self._R)
+        return Result(self, total_energy, atomwise_energies, force, forces, None, None)

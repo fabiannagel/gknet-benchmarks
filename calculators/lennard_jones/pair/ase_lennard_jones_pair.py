@@ -28,28 +28,36 @@ class AseLennardJonesPair(Calculator):
         obj: AseLennardJonesPair = super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset)
         obj._atoms = atoms
         obj._atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=r_cutoff, ro=r_onset, smooth=True)
-        return obj
+        return obj    
     
     @classmethod
-    def create_equilibrium_potential(cls, n: int, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AseLennardJonesPair:
+    def create_potential(cls, n: int, sigma: float, epsilon: float, r_cutoff: Optional[float], r_onset: Optional[float]) -> AseLennardJonesPair:
+        '''
+        Create a cubic Argon bulk structure using ASE.
+        If omitted, r_cutoff is set to half the maximum super cell lattice vector magnitude.
+        If omitted, r_onset is set to 0.8 * r_cutoff
+        '''
+        
         atoms = bulk('Ar', cubic=True) * cls._compute_supercell_multipliers('Ar', n)
+        
+        if r_cutoff is None:
+            max_box_length = np.max([np.linalg.norm(uv) for uv in atoms.get_cell().array])
+            r_cutoff = 0.5 * max_box_length
+
+        if r_onset is None:
+            r_onset = 0.8 * r_cutoff 
+
+        # Optional: Introduce strain by upscaling the super cell
+        # self._atoms.set_cell(1.05 * self._atoms.get_cell(), scale_atoms=True)    
         return cls.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset)
 
-    
-    # TODO: Decide whether to keep this
-    @classmethod
-    def create_potential(cls, box_size: float, n: int, R: Optional[np.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AseLennardJonesPair:        
-        # obj: AseLennardJonesPair = super().create_potential(box_size, n, R, sigma, epsilon, r_cutoff, r_onset)
-        # obj._atoms = bulk('Ar', cubic=True) * obj._compute_supercell_multipliers('Ar', obj._n)
-        
-        
-        # ASE initializes the system in an energy minimum, so forces = 0.
-        # We can introduce strain by upscaling the super cell like this:
-        # self._atoms.set_cell(1.05 * self._atoms.get_cell(), scale_atoms=True)    
-        
-        # obj._atoms.calc = LennardJones(sigma=obj._sigma, epsilon=obj._epsilon, rc=obj._r_cutoff)
-        # return obj
-        pass
+    @property
+    def r_onset(self) -> float:
+        return self._r_onset
+
+    @property
+    def r_cutoff(self) -> float:
+        return self._r_cutoff
 
     @property
     def description(self):
@@ -76,11 +84,11 @@ class AseLennardJonesPair(Calculator):
 
 
     def _compute_properties(self) -> Result:
-        # TODO: Same duplicate code in ASAX, maybe mixin here as well?
         energy = self._atoms.get_potential_energy()
         energies = self._atoms.get_potential_energies()
         forces = self._atoms.get_forces()
         force = np.sum(forces)
+
         stress = self._atoms.get_stress()
         stresses = self._atoms.get_stresses()
         return Result(self, energy, energies, force, forces, stress, stresses)

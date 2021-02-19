@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Callable, List, Optional
 from ase.atoms import Atoms
 import numpy as np
 import time
@@ -33,18 +33,20 @@ class Result():
 class Calculator(ABC):
     _runtimes = []
     _atoms: Optional[Atoms]
+    _energy_fn: Callable
 
     def __init__(self, box: np.array, n: int, R: np.ndarray, computes_stress: bool) -> None:
         self._box = box
-        self._n = n
+        self._n = n     # TODO: What do we need n for? We can derive it from R to avoid inconsistencies
         self._R = R
         self._computes_stress = computes_stress
         
 
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, *args) -> cls:
-        box = atoms.get_cell().array * np.eye(3)
-        return cls(box, len(atoms), atoms.get_positions(), *args)
+        box = atoms.get_cell().array
+        R_real = atoms.get_positions()
+        return cls(box, len(atoms), R_real, *args)
 
 
     @classmethod
