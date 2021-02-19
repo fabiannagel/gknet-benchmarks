@@ -89,6 +89,6 @@ class AseLennardJonesPair(Calculator):
         forces = self._atoms.get_forces()
         force = np.sum(forces)
 
-        stress = self._atoms.get_stress()
+        stress = self._atoms.get_stress(voigt=False)
         stresses = self._atoms.get_stresses()
         return Result(self, energy, energies, force, forces, stress, stresses)

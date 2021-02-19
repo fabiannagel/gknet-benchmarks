@@ -80,20 +80,24 @@ class JmdLennardJonesPair(Calculator):
         
         energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)       
         
-        def compute_properties_with_stress(epsilon: jnp.array, R: space.Array) -> Tuple[jnp.array, float, jnp.array, jnp.array]:
-            strained_box_energy_fn = lambda epsilon, R: energy_fn(R, box=self._box + epsilon)
+        def compute_properties_with_stress(deformation: jnp.array, R: space.Array):    
+            # strained_box = jnp.dot(jnp.eye(3) + (deformation + deformation.T)*0.5, self._box)
+            deformation_energy_fn = lambda deformation, R: energy_fn(R, box=jnp.dot(jnp.eye(3) + (deformation + deformation.T)*0.5, self._box))
+            total_deformation_energy_fn = lambda deformation, R: jnp.sum(deformation_energy_fn(deformation, R))
+            
+            deformation_force_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=1)(deformation, R) * -1
+            stress_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
 
-            total_energy_fn = lambda epsilon, R: jnp.sum(strained_box_energy_fn(epsilon, R))
-            force_fn = grad(total_energy_fn, argnums=1)
-            stress_fn = grad(total_energy_fn, argnums=0) 
-            stress = stress_fn(epsilon, R) / jnp.linalg.det(self._box)
-            return strained_box_energy_fn(epsilon, R), total_energy_fn(epsilon, R), force_fn(epsilon, R) * -1, stress
+            total_energy = total_deformation_energy_fn(deformation, R)
+            atomwise_energies = deformation_energy_fn(deformation, R)
+            forces = deformation_force_fn(deformation, R)
+            force = jnp.sum(forces)
+            stress = stress_fn(deformation, R)
+
+            return total_energy, atomwise_energies, force, forces, stress
+
 
         def compute_properties(R: space.Array) -> Tuple[jnp.array, float, jnp.array]:
-            # print("compute properties, no stress:")
-
-            # total_energy_fn = lambda R: jnp.sum(energy_fn(R))
-
             total_energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=False)
             forces_fn = quantity.force(total_energy_fn)
 
@@ -104,14 +108,16 @@ class JmdLennardJonesPair(Calculator):
 
             return total_energy, atomwise_energies, force, forces
 
+
         if stress:
-            return jit(displacement_fn), jit(compute_properties_with_stress)
-        return jit(displacement_fn), jit(compute_properties)
+            return displacement_fn, compute_properties_with_stress
+        return displacement_fn, compute_properties
 
     def _compute_properties(self) -> Result:
         if self._stress:
-            energies, energy, forces, stress = self._properties_fn(jnp.zeros((3, 3)), self._R)
-            return Result(self, energy, energies, None, forces, stress, None)
+            deformation = jnp.zeros_like(self._box)
+            total_energy, atomwise_energies, force, forces, stress = self._properties_fn(deformation, self._R)
+            return Result(self, total_energy, atomwise_energies, force, forces, stress, None)
         
         total_energy, atomwise_energies, force, forces = self._properties_fn(self._R)
         return Result(self, total_energy, atomwise_energies, force, forces, None, None)
