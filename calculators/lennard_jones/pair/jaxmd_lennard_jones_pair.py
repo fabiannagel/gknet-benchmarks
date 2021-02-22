@@ -45,10 +45,9 @@ class JmdLennardJonesPair(Calculator):
 
 
     @classmethod
-    # TODO: is there a use case here in which displacement_fn != None?
-    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, displacement_fn: Optional[Callable]) -> JmdLennardJonesPair:
+    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> JmdLennardJonesPair:
         '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
-        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
+        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, None)
 
 
     @property
@@ -85,11 +84,12 @@ class JmdLennardJonesPair(Calculator):
             displacement_fn, _ = periodic_general(self._box)
         
         energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)       
-        
-        def compute_properties_with_stress(deformation: jnp.array, R: space.Array):   
-            # We do two things here:
+
+        def compute_properties_with_stress(deformation: jnp.ndarray, R: space.Array):   
             # 1) Set the box under strain using a symmetrized deformation tensor
             # 2) Override the box in the energy function
+            # 3) Derive forces, stress and stresses as gradients of the deformed energy function
+
             symmetrized_strained_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, self._box)            
             deformation_energy_fn = lambda deformation, R: energy_fn(R, box=symmetrized_strained_box_fn(deformation))
 
@@ -102,23 +102,21 @@ class JmdLennardJonesPair(Calculator):
             total_energy = total_deformation_energy_fn(deformation, R)
             atomwise_energies = deformation_energy_fn(deformation, R)
             forces = deformation_force_fn(deformation, R)
-            force = jnp.sum(forces)
             stress = stress_fn(deformation, R)
             stresses = stresses_fn(deformation, R)
 
-            return total_energy, atomwise_energies, force, forces, stress, stresses
+            return total_energy, atomwise_energies, forces, stress, stresses
 
 
-        def compute_properties(R: space.Array) -> Tuple[jnp.array, float, jnp.array]:
-            total_energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=False)
+        def compute_properties(R: space.Array) -> Tuple[jnp.ndarray, float, jnp.ndarray]:
+            total_energy_fn = lambda R: jnp.sum(energy_fn(R))
             forces_fn = quantity.force(total_energy_fn)
 
             total_energy = total_energy_fn(R)
             atomwise_energies = energy_fn(R)
             forces = forces_fn(R)
-            force = jnp.sum(forces)
 
-            return total_energy, atomwise_energies, force, forces
+            return total_energy, atomwise_energies, forces
 
 
         if stress:
@@ -129,8 +127,8 @@ class JmdLennardJonesPair(Calculator):
     def _compute_properties(self) -> Result:
         if self._stress:
             deformation = jnp.zeros_like(self._box)
-            total_energy, atomwise_energies, force, forces, stress, stresses = self._properties_fn(deformation, self._R)
-            return Result(self, total_energy, atomwise_energies, force, forces, stress, stresses)
+            total_energy, atomwise_energies, forces, stress, stresses = self._properties_fn(deformation, self._R)
+            return Result(self, total_energy, atomwise_energies, forces, stress, stresses)
         
-        total_energy, atomwise_energies, force, forces = self._properties_fn(self._R)
-        return Result(self, total_energy, atomwise_energies, force, forces, None, None)
+        total_energy, atomwise_energies, forces = self._properties_fn(self._R)
+        return Result(self, total_energy, atomwise_energies, forces, None, None)

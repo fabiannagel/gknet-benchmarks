@@ -1,13 +1,14 @@
+from typing import List
 from ase.atoms import Atoms
 from calculators.calculator import Calculator
 import unittest
 from unittest.case import skip
 from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
-from ...test_utils import *
+from ...utils import *
 
 
-class ComparisonWithStress(unittest.TestCase):
+class ComparisonWithoutStress(unittest.TestCase):
     _calculators: List[Calculator]
     _n = 500
     _sigma = 2.0
@@ -25,7 +26,7 @@ class ComparisonWithStress(unittest.TestCase):
 
 
     def _create_jaxmd_calculator(self, atoms: Atoms) -> JmdLennardJonesPair:
-        return JmdLennardJonesPair.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=True, adjust_radii=True)
+        return JmdLennardJonesPair.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, adjust_radii=True)
 
 
     def setUp(self):
@@ -69,21 +70,7 @@ class ComparisonWithStress(unittest.TestCase):
         assert_arrays_all_close(total_energies, atol=1E-15)
     
     
-    def test_force_equality(self):
-        force = [r.force for r in self._results]
-        assert_arrays_all_close(force, atol=1E-12)
-
-    
     def test_forces_equality(self):
         forces = [r.forces for r in self._results]
         assert_arrays_all_close(forces, atol=1E-14)
-
-
-    def test_stress_equality(self):
-        stress = [r.stress for r in self._results]
-        assert_arrays_all_close(stress, atol=1E-17)
-
-
-    def test_stresses_equality(self):
-        stresses = [r.stresses for r in self._results]
-        assert_arrays_all_close(stresses, atol=1E-17)
+        

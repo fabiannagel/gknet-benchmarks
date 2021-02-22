@@ -10,32 +10,27 @@ import time
 @dataclass
 class Result():
     calculator: Calculator
+    
     energy: float
     energies: np.ndarray
-    force: float
+    
     forces: np.ndarray
+    
     stress: float
     stresses: np.ndarray
+    
     computation_time: float = None
 
     # TODO: Verify conservational laws on construction
 
-    #def energy(self) -> float:
-    #    return np.sum(self.energies)
 
-    #def force(self) -> float:
-    #    return np.sum(self.forces)
-
-    #def stress(self) -> float:
-    #    return np.sum(self.stresses)
-    
 
 class Calculator(ABC):
     _runtimes = []
     _atoms: Optional[Atoms]
     _energy_fn: Callable
 
-    def __init__(self, box: np.array, n: int, R: np.ndarray, computes_stress: bool) -> None:
+    def __init__(self, box: np.ndarray, n: int, R: np.ndarray, computes_stress: bool) -> None:
         self._box = box
         self._n = n     # TODO: What do we need n for? We can derive it from R to avoid inconsistencies
         self._R = R
@@ -71,7 +66,7 @@ class Calculator(ABC):
     
 
     @property
-    def box(self) -> np.array:
+    def box(self) -> np.ndarray:
         return self._box
 
 
