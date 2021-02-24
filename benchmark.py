@@ -3,6 +3,7 @@
 # del sys.path[0]
 # sys.path.insert(0, '/home/pop518504/git/gknet-benchmarks')
 
+from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
 from typing import List
 from utils import plot_runtimes
 from calculators.calculator import Result
@@ -19,12 +20,10 @@ def generate_system_sizes(z_max: int, unit_cell_size):
     return ns
 
 
-# n = 500
-box_size = 100
 sigma = 2.0
 epsilon = 1.5
 
-system_sizes = generate_system_sizes(z_max=2, unit_cell_size=4)
+system_sizes = generate_system_sizes(z_max=8, unit_cell_size=4)
 results: List[Result] = []
 
 for n in system_sizes:
@@ -39,6 +38,10 @@ for n in system_sizes:
     # setup JAX-MD
     jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, adjust_radii=True)    
     results.append(jmd.calculate())
+
+    # setup asax
+    asax = AsaxLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True)
+    results.append(asax.calculate())
 
 
 

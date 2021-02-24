@@ -46,12 +46,10 @@ def plot_runtimes(title: str, system_sizes: List[int], results: List[Result], fi
         calculator_description = result_group[0].calculator.description
         computation_times = [r.computation_time for r in result_group]
         plt.plot(system_sizes, computation_times, label=calculator_description)
-        # print(calculator_description)
-        # print([r.computation_time for r in result_group])
-        # print()
     
     plt.title(title)
     plt.xlabel("Number of atoms")
     plt.ylabel("Computation time [s]")
+    plt.yscale("log")
     plt.legend()
     plt.savefig(file_name)

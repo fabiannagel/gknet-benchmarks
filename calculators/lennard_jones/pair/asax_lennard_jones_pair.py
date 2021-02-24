@@ -26,11 +26,15 @@ class AsaxLennardJonesPair(Calculator):
 
     @property
     def description(self) -> str:
-        return "ASAX Lennard-Jones Calculator"
+        return "ASAX Lennard-Jones Calculator (stress={})".format(str(self._stress))
+
+    @property
+    def pairwise_distances(self):
+        return self._atoms.get_all_distances(mic=True) 
 
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> AsaxLennardJonesPair:
-        obj: AsaxLennardJonesPair = super().from_ase_atoms(atoms, sigma, float, epsilon, r_cutoff, r_onset, stress)
+        obj: AsaxLennardJonesPair = super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress)
         obj._atoms = atoms
         obj._atoms.calc = LennardJones(obj._epsilon, obj._sigma, obj._r_cutoff, obj._r_onset, x64=True, stress=stress)
         return obj
@@ -65,11 +69,10 @@ class AsaxLennardJonesPair(Calculator):
         # TODO: Add atom-wise stresses to ASAX once implemented for JAX-MD
 
         energy = self._atoms.get_potential_energy()
-        # energies = self._atoms.get_potential_energies()
         energies = None
         forces = self._atoms.get_forces()
         force = np.sum(forces)
         stress = self._atoms.get_stress()
-        # stresses = self._atoms.get_stresses()
         stresses = None
-        return Result(self, energy, energies, force, forces, stress, stresses)
+
+        return Result(self, energy, energies, forces, stress, stresses, None)
