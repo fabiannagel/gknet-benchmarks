@@ -23,8 +23,8 @@ class JmdLennardJonesPairTest(chex.TestCase):
         super().__init__(methodName)
         key = random.PRNGKey(0)
         R = random.uniform(key, shape=(self._n, 3))        
-        self._calculator = JmdLennardJonesPair.create_potential(self._box_size, self._n, R, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False)
-        self._stress_calculator = JmdLennardJonesPair.create_potential(self._box_size, self._n, R, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=True)
+        self._calculator = JmdLennardJonesPair.create_potential(self._box_size, self._n, R, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, jit=False)
+        self._stress_calculator = JmdLennardJonesPair.create_potential(self._box_size, self._n, R, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=True, jit=False)
 
 
     def setUp(self):

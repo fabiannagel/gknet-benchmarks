@@ -22,18 +22,19 @@ class JmdLennardJonesPair(Calculator):
     # Unite in new parameter box_size_or_displacement? What is the proper way to do this?
 
     # TODO: Create lightweight type for LJ parameters?
-    def __init__(self, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, displacement_fn: Optional[Callable]):
+    def __init__(self, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, jit: bool, displacement_fn: Optional[Callable]):
         super().__init__(box_size, n, R, stress)
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset 
         self._stress = stress
+        self._jit = jit
         self._displacement_fn, self._properties_fn = self._initialize_potential(displacement_fn, stress)
 
 
     @classmethod
-    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, adjust_radii: bool) -> JmdLennardJonesPair:
+    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, adjust_radii: bool, jit: bool) -> JmdLennardJonesPair:
         displacement_fn = new_get_displacement(atoms)
         
         # JAX-MD's LJ implementation multiplies onset and cutoff by sigma. To be compatible w/ ASE's implementation, we need to perform these adjustments.
@@ -41,13 +42,13 @@ class JmdLennardJonesPair(Calculator):
             r_onset /= sigma
             r_cutoff /= sigma
 
-        return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, displacement_fn)
+        return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, jit, displacement_fn)
 
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool) -> JmdLennardJonesPair:
+    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, jit: bool) -> JmdLennardJonesPair:
         '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
-        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, None)
+        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, jit, None)
 
 
     @property

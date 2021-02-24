@@ -36,7 +36,7 @@ for n in system_sizes:
     results.append(ase.calculate())
 
     # setup JAX-MD
-    jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, adjust_radii=True)    
+    jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, adjust_radii=True, jit=False)    
     results.append(jmd.calculate())
 
     # setup asax

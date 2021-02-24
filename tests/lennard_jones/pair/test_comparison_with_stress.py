@@ -24,7 +24,7 @@ class ComparisonWithStress(unittest.TestCase):
 
 
     def _create_jaxmd_calculator(self, atoms: Atoms) -> JmdLennardJonesPair:
-        return JmdLennardJonesPair.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=True, adjust_radii=True)
+        return JmdLennardJonesPair.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=True, adjust_radii=True, jit=False)
 
 
     def setUp(self):
