@@ -26,7 +26,7 @@ class Result():
 
 
 class Calculator(ABC):
-    _runtimes = []
+    _results: List[Result] = []
     _atoms: Optional[Atoms]
     _energy_fn: Callable
 
@@ -64,6 +64,9 @@ class Calculator(ABC):
         """Returns a matrix of pairwise atom distances of shape (n, 3)."""
         pass
     
+    @property
+    def results(self) -> List[Result]:
+        return self._results
 
     @property
     def box(self) -> np.ndarray:
@@ -103,8 +106,9 @@ class Calculator(ABC):
     def calculate(self) -> Result:
         start = time.time()
         result = self._compute_properties()
-        elapsed_seconds = (time.time() - start) / 1000
-        self._runtimes.append(elapsed_seconds)
+        # elapsed_seconds = (time.time() - start) / 1000
+        elapsed_seconds = time.time() - start        
+        self._results.append(result)
 
         result.computation_time = elapsed_seconds
         return result

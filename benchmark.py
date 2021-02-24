@@ -3,12 +3,12 @@
 # del sys.path[0]
 # sys.path.insert(0, '/home/pop518504/git/gknet-benchmarks')
 
-from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
+from typing import List
+from utils import plot_runtimes
+from calculators.calculator import Result
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
 from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
 # from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
-
-
 
 
 def generate_system_sizes(z_max: int, unit_cell_size):
@@ -19,32 +19,27 @@ def generate_system_sizes(z_max: int, unit_cell_size):
     return ns
 
 
+# n = 500
 box_size = 100
-n = 40
 sigma = 2.0
 epsilon = 1.5
-r_cutoff = 11.0
-r_onset = 6.0
 
-results = []
+system_sizes = generate_system_sizes(z_max=2, unit_cell_size=4)
+results: List[Result] = []
 
-# ase = AseLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff)
-# results.append(ase.calculate())
+for n in system_sizes:
+    print("System size n =", n)
 
-# jmd = JmdLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset, stress=True)
-# r = jmd.calculate()
+    # setup ASE
+    ase = AseLennardJonesPair.create_potential(n, sigma, epsilon, r_cutoff=None, r_onset=None)
+    r_onset = ase.r_onset
+    r_cutoff = ase.r_cutoff
+    results.append(ase.calculate())
 
-# print(r.calculator.description)
-# print(r.computation_time)
-
-# print(r.energies)
-# print(r.forces)
-# print(r.stresses)
-
-# asax = AsaxLennardJonesPair.create_potential(box_size, n, None, sigma, epsilon, r_cutoff, r_onset)
-# results.append(asax.calculate())
+    # setup JAX-MD
+    jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, adjust_radii=True)    
+    results.append(jmd.calculate())
 
 
 
-# TESTs
-# - JmdLennardJonesPair: Compare energies and forces with stress=True and stress=False
+plot_runtimes("Pairwise Lennard-Jones runtimes with increasing system size", system_sizes, results, file_name="pairwise_lj.png")
