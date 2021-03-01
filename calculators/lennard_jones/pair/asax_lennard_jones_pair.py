@@ -71,8 +71,10 @@ class AsaxLennardJonesPair(Calculator):
         energy = self._atoms.get_potential_energy()
         energies = None
         forces = self._atoms.get_forces()
-        force = np.sum(forces)
         stress = self._atoms.get_stress()
         stresses = None
 
         return Result(self, self._n, energy, energies, forces, stress, stresses, None)
+
+    def warm_up(self):
+        self._compute_properties()

@@ -22,10 +22,13 @@ def generate_system_sizes(z_max: int, unit_cell_size):
 sigma = 2.0
 epsilon = 1.5
 
-system_sizes = generate_system_sizes(z_max=4, unit_cell_size=4)
+system_sizes = generate_system_sizes(z_max=8, unit_cell_size=4)
 results: List[Result] = []
 
 runs = 4
+
+print("Benchmarking system sizes: {}".format(system_sizes))
+print("Performing {} run(s) per framework and system size\n".format(runs))
 
 for n in system_sizes:
     print("System size n =", n)
@@ -40,9 +43,6 @@ for n in system_sizes:
     jmd.warm_up() 
     results.extend(jmd.calculate(runs))
 
-    
-    continue
-    
 
     # JAX-MD w/o jit
     jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, adjust_radii=True, jit=False)    
@@ -51,9 +51,8 @@ for n in system_sizes:
 
     # asax
     asax = AsaxLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True)
-    asax.calculate()
-    for n in range(runs):
-        results.append(asax.calculate())
+    # asax.warm_up()
+    results.extend(asax.calculate(runs))
 
 
 plot_runtimes("Pairwise Lennard-Jones runtimes with increasing system size", system_sizes, results, file_name="pairwise_lj.png")
