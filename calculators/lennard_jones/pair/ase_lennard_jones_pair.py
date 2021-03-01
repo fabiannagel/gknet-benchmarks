@@ -96,5 +96,5 @@ class AseLennardJonesPair(Calculator):
 
         stress = self._atoms.get_stress(voigt=False)
         stresses = self._atoms.get_stresses(voigt=False)
-        return Result(self, energy, energies, forces, stress, stresses)
+        return Result(self, self._n, energy, energies, forces, stress, stresses)
         

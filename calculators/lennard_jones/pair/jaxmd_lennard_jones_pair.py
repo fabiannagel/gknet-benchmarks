@@ -53,7 +53,7 @@ class JmdLennardJonesPair(Calculator):
 
     @property
     def description(self) -> str:
-        return "JAX-MD Lennard-Jones Calculator (stress={})".format(str(self._stress))
+        return "JAX-MD Lennard-Jones Calculator (stress={}, jit={})".format(str(self._stress), str(self._jit))
 
 
     @property
@@ -119,9 +119,14 @@ class JmdLennardJonesPair(Calculator):
 
             return total_energy, atomwise_energies, forces
 
-
+        # TODO: Make less hacky
         if stress:
+            if self._jit:
+                return jit(displacement_fn), jit(compute_properties_with_stress)
             return displacement_fn, compute_properties_with_stress
+
+        if self._jit:
+            return jit(displacement_fn), jit(compute_properties)
         return displacement_fn, compute_properties
 
 
@@ -129,7 +134,12 @@ class JmdLennardJonesPair(Calculator):
         if self._stress:
             deformation = jnp.zeros_like(self._box)
             total_energy, atomwise_energies, forces, stress, stresses = self._properties_fn(deformation, self._R)
-            return Result(self, total_energy, atomwise_energies, forces, stress, stresses)
+            return Result(self, self._n, total_energy, atomwise_energies, forces, stress, stresses)
         
         total_energy, atomwise_energies, forces = self._properties_fn(self._R)
-        return Result(self, total_energy, atomwise_energies, forces, None, None)
+        return Result(self, self._n, total_energy, atomwise_energies, forces, None, None)
+
+    def warm_up(self):
+        if not self._jit:
+            raise RuntimeError("Warm-up only implemented for jit=True")
+        self._compute_properties()

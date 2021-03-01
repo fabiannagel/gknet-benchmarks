@@ -6,23 +6,19 @@ from typing import Callable, List, Optional
 from ase.atoms import Atoms
 import numpy as np
 import time
+import itertools
 
 @dataclass
 class Result():
     calculator: Calculator
-    
+    n: int
+
     energy: float
     energies: np.ndarray
-    
     forces: np.ndarray
-    
     stress: float
     stresses: np.ndarray
-    
     computation_time: float = None
-
-    # TODO: Verify conservational laws on construction
-
 
 
 class Calculator(ABC):
@@ -103,12 +99,13 @@ class Calculator(ABC):
         pass
 
 
-    def calculate(self) -> Result:
-        start = time.time()
-        result = self._compute_properties()
-        # elapsed_seconds = (time.time() - start) / 1000
-        elapsed_seconds = time.time() - start        
-        self._results.append(result)
-
-        result.computation_time = elapsed_seconds
-        return result
+    def calculate(self, runs=1) -> List[Result]:
+        results = []
+        for _ in itertools.repeat(None, runs):
+            start = time.time()
+            r = self._compute_properties()
+            r.computation_time = time.time() - start   
+            results.append(r)
+        
+        self._results.extend(results)
+        return results

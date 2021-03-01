@@ -75,4 +75,4 @@ class AsaxLennardJonesPair(Calculator):
         stress = self._atoms.get_stress()
         stresses = None
 
-        return Result(self, energy, energies, forces, stress, stresses, None)
+        return Result(self, self._n, energy, energies, forces, stress, stresses, None)
