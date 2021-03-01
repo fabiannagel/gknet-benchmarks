@@ -35,7 +35,7 @@ for n in system_sizes:
 
     # ASE
     ase = AseLennardJonesPair.create_potential(n, sigma, epsilon, r_cutoff=None, r_onset=None)
-    results.extend(ase.calculate(runs))
+    # results.extend(ase.calculate(runs))
 
 
     # JAX-MD w/ jit
@@ -45,14 +45,14 @@ for n in system_sizes:
 
 
     # JAX-MD w/o jit
-    jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, adjust_radii=True, jit=False)    
-    results.extend(jmd_nojit.calculate(runs))
+    # jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, adjust_radii=True, jit=False)    
+    # results.extend(jmd_nojit.calculate(runs))
     
 
     # asax
-    asax = AsaxLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True)
+    # asax = AsaxLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True)
     # asax.warm_up()
-    results.extend(asax.calculate(runs))
+    # results.extend(asax.calculate(runs))
 
-
-plot_runtimes("Pairwise Lennard-Jones runtimes with increasing system size", system_sizes, results, file_name="pairwise_lj.png")
+persist_results(results)
+# plot_runtimes("Pairwise Lennard-Jones runtimes with increasing system size", system_sizes, results, file_name="pairwise_lj.png")

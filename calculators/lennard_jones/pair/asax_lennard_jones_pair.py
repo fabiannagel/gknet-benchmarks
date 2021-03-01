@@ -78,3 +78,16 @@ class AsaxLennardJonesPair(Calculator):
 
     def warm_up(self):
         self._compute_properties()
+
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['_atoms']['calc']
+        del state['_compute_supercell_multipliers']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        error_fn = lambda *args, **kwargs: print("Pickled instance cannot compute new data")
+        self._atoms.calc = error_fn
+        self._compute_supercell_multipliers = error_fn

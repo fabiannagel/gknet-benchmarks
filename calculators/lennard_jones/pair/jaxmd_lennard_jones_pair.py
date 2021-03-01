@@ -143,3 +143,23 @@ class JmdLennardJonesPair(Calculator):
         if not self._jit:
             raise RuntimeError("Warm-up only implemented for jit=True")
         self._compute_properties()
+
+    
+    def __getstate__(self):
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        del state['_displacement_fn']
+        del state['_properties_fn']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes (i.e., filename and lineno).
+        self.__dict__.update(state)
+        # Restore the previously opened file's state. To do so, we need to
+        # reopen it and read from it until the line count is restored.
+        error_fn = lambda *args, **kwargs: print("Pickled instance cannot compute new data")
+        self._displacement_fn = error_fn
+        self._properties_fn = error_fn

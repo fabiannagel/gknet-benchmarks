@@ -24,7 +24,7 @@ class Result():
 class Calculator(ABC):
     _results: List[Result] = []
     _atoms: Optional[Atoms]
-    _energy_fn: Callable
+    # _energy_fn: Callable
 
     def __init__(self, box: np.ndarray, n: int, R: np.ndarray, computes_stress: bool) -> None:
         self._box = box
