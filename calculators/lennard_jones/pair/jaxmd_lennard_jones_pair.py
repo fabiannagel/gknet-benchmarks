@@ -29,7 +29,7 @@ class JmdLennardJonesPair(Calculator):
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset 
         self._stress = stress
-        self._stresses = stress
+        self._stresses = stresses
         self._jit = jit
         self._displacement_fn, self._properties_fn = self._initialize_potential(displacement_fn, stress)
 
@@ -102,10 +102,13 @@ class JmdLennardJonesPair(Calculator):
             deformation_force_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=1)(deformation, R) * -1
             forces = deformation_force_fn(deformation, R)
 
+            # TODO: Why so ugly?
+            stress = None
             if self._stress:
                 stress_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
                 stress = stress_fn(deformation, R)
 
+            stresses = None
             if self._stresses:            
                 stresses_fn = lambda deformation, R: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
                 stresses = stresses_fn(deformation, R)

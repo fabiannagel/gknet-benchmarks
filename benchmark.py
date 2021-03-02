@@ -24,19 +24,19 @@ for n in system_sizes:
 
     
     # JAX-MD: stress=True, stresses=True, jit=True
-    jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
-    jmd.warm_up() 
-    results.extend(jmd.calculate(runs))
+    jmd1 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
+    jmd1.warm_up() 
+    results.extend(jmd1.calculate(runs))
 
     # JAX-MD: stress=True, stresses=False, jit=True
-    jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
-    jmd.warm_up() 
-    results.extend(jmd.calculate(runs))
+    jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
+    jmd2.warm_up() 
+    results.extend(jmd2.calculate(runs))
 
     # JAX-MD: stress=False, stresses=False, jit=True
-    jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
-    jmd.warm_up() 
-    results.extend(jmd.calculate(runs))
+    jmd3 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
+    jmd3.warm_up() 
+    results.extend(jmd3.calculate(runs))
 
 
 
