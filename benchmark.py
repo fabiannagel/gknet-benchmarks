@@ -24,12 +24,12 @@ for n in system_sizes:
     results.extend(ase.calculate(runs))
     
     # JAX-MD w/ jit
-    jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, adjust_radii=True, jit=True)    
+    jmd = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
     jmd.warm_up() 
     results.extend(jmd.calculate(runs))
 
     # JAX-MD w/o jit
-    jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, adjust_radii=True, jit=False)    
+    jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=False)    
     results.extend(jmd_nojit.calculate(runs))
     
     # asax

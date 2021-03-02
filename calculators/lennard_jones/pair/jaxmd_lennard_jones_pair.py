@@ -54,7 +54,7 @@ class JmdLennardJonesPair(Calculator):
 
     @property
     def description(self) -> str:
-        return "JAX-MD Lennard-Jones Calculator (stress={}, jit={})".format(str(self._stress), str(self._jit))
+        return "JAX-MD Lennard-Jones Calculator (stress={}, stresses={}, jit={})".format(self._stress, self._stresses, self._jit)
 
 
     @property
