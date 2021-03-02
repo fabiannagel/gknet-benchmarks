@@ -1,3 +1,4 @@
+import os
 from os import system
 from typing import Callable, Iterable, List, Set, Union, Type
 import warnings
@@ -39,8 +40,31 @@ def new_get_displacement(atoms):
     return displacement
 
 
-def persist_results(results: List[Result], file_name: str):
-    with open(file_name, 'wb') as handle:
+def generate_system_sizes(z_max: int, unit_cell_size):
+    ns = []
+    for i in range(z_max):
+        n = unit_cell_size * (i+1)**3
+        ns.append(n)
+    return ns
+
+
+def create_output_path(runs: int) -> str:
+    results_dir = "results/{}_runs/".format(runs)
+    output_path = os.path.join(os.getcwd(), results_dir)
+
+    if os.path.exists(output_path) and len(os.listdir(output_path)) > 0:
+        raise RuntimeError("Output folder {} is not empty".format(output_path))
+
+    os.makedirs(output_path, exist_ok=True)
+    return output_path
+
+
+def persist_results(results: List[Result], runs: int):
+    base_path = create_output_path(runs)
+    file_name = "results_{}_runs.pickle".format(runs)
+    output_path = os.path.join(base_path, file_name) 
+
+    with open(output_path, 'wb') as handle:
         pickle.dump(results, handle)
 
 
