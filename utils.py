@@ -1,4 +1,5 @@
-from typing import Callable, Iterable, List, Set
+from os import system
+from typing import Callable, Iterable, List, Set, Union, Type
 import warnings
 
 from jax_md import space
@@ -38,18 +39,10 @@ def new_get_displacement(atoms):
     return displacement
 
 
-def persist_results(results: List[Result], file_name='results.pickle'):
+def persist_results(results: List[Result], file_name: str):
     with open(file_name, 'wb') as handle:
         pickle.dump(results, handle)
 
-
-def plot_saved_runtimes(file_name: str):
-    with open(file_name, 'wb') as handle:
-        results = pickle.load(results, handle)
-        plot_runtimes('foo', system_sizes, results, 'foo')  
-
-def sort_by_calculator(results: List[Result]) -> List[Result]:
-    return sorted(results, key=lambda r: r.calculator.description)
 
 def group_by(iterable: Iterable, key: Callable):
     '''Sorts and groups the iterable by the provided key.'''
@@ -57,29 +50,76 @@ def group_by(iterable: Iterable, key: Callable):
     return groupby(iterable, key)
 
 
-def plot_runtimes(title: str, system_sizes: List[int], results: List[Result], file_name: str):
-    fig, ax = plt.subplots()
+def get_system_sizes(results: List[Result]) -> List[int]:
+    unique_ns = set([r.n for r in results])
+    return sorted(unique_ns)
+
+
+def load_results_from_pickle(file_path: str) -> List[Result]:
+    with open(file_path, 'rb') as handle:
+        results = pickle.load(handle)
+    return results
+
+
+def plot_runtimes(results: List[Result], 
+                  plot_title: str = None,
+                  plot_file_name: str = None, 
+                  shade_by: str = None,
+                  scatter = False):
+    
     runs = []
+    system_sizes = get_system_sizes(results)
+    fig, ax = plt.subplots(figsize=(20, 10))
 
     for key, results_per_calculator in group_by(results, lambda r: r.calculator.description):
-        results_per_calculator = list(results_per_calculator)
-        computation_times = []      
+        results_per_calculator = list(results_per_calculator)    
+        
+        computation_times = []
+        standard_deviations = []
+        mins = []
+        maxs = []
 
         for key, mergeable_results in group_by(results_per_calculator, lambda r: r.n):
-           mergeable_results = list(mergeable_results)
-           runs.append(len(mergeable_results))
-        
-           mean_computation_time = np.mean([r.computation_time for r in mergeable_results])   # for all runs of the current system size
-           computation_times.append(mean_computation_time)
+            mergeable_results = list(mergeable_results)
+            runs.append(len(mergeable_results))
 
+            mergeable_computation_times = [r.computation_time for r in mergeable_results]
+           
+            computation_times.append(np.mean(mergeable_computation_times))
+            standard_deviations.append(np.std(mergeable_computation_times))      
+            mins.append(np.min(mergeable_computation_times))
+            maxs.append(np.max(mergeable_computation_times))     
+            
+            if scatter:
+                current_system_sizes = [r.n for r in mergeable_results]
+                ax.scatter(current_system_sizes, mergeable_computation_times)
+        
+        
         ax.plot(system_sizes, computation_times, label=results_per_calculator[0].calculator.description)
-       
+        # plt.errorbar(system_sizes, computation_times, yerr=np.array(computation_times)*10, uplims=True, lolims=True, label='uplims=True, lolims=True')
+
+        if shade_by == 'minmax':
+            ax.fill_between(system_sizes, mins, maxs, alpha=0.2)
+
+        elif shade_by == 'std':
+            y_start = np.array(computation_times) - np.array(standard_deviations)
+            y_end = np.array(computation_times) + np.array(standard_deviations)
+            ax.fill_between(system_sizes, y_start, y_end, alpha=0.2)
+    
+        
     if len(set(runs)) > 1:
         raise RuntimeError("Inconsistent number of runs in results")
-
-    ax.set_title("{}\nAverage of {} runs".format(title, runs[0]))
+        
+    title = "{}\nAverage of {} runs. {} shading.".format(plot_title, runs[0], shade_by)
+    ax.set_title(title)
     ax.set_xlabel("Number of atoms")
+    ax.set_xticks(system_sizes)
     ax.set_ylabel("Computation time [s]")
     ax.set_yscale("log")
     ax.legend()
-    fig.savefig(file_name)
+    
+    if plot_file_name != '':
+        fig.savefig(plot_file_name)
+
+
+

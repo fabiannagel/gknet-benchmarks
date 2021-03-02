@@ -98,3 +98,12 @@ class AseLennardJonesPair(Calculator):
         stresses = self._atoms.get_stresses(voigt=False)
         return Result(self, self._n, energy, energies, forces, stress, stresses)
         
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['_atoms']
+        return state
+  
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        error_fn = lambda *args, **kwargs: print("Pickled instance cannot compute new data")
+        self._atoms = error_fn
