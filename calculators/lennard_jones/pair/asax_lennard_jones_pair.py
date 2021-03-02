@@ -23,10 +23,11 @@ class AsaxLennardJonesPair(Calculator):
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset
         self._stress = stress
+        self._stresses = False
 
     @property
     def description(self) -> str:
-        return "ASAX Lennard-Jones Calculator (stress={})".format(str(self._stress))
+        return "ASAX Lennard-Jones Calculator (stress={}, stresses={})".format(self._stress, self._stresses)
 
     @property
     def pairwise_distances(self):

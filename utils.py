@@ -134,7 +134,7 @@ def plot_runtimes(results: List[Result],
     if len(set(runs)) > 1:
         raise RuntimeError("Inconsistent number of runs in results")
         
-    title = "{}\nAverage of {} runs. {} shading.".format(plot_title, runs[0], shade_by)
+    title = "{}\nAverages of {} runs. {} shading.".format(plot_title, runs[0], shade_by)
     ax.set_title(title)
     ax.set_xlabel("Number of atoms")
     ax.set_xticks(system_sizes)
@@ -142,7 +142,7 @@ def plot_runtimes(results: List[Result],
     ax.set_yscale("log")
     ax.legend()
     
-    if plot_file_name != '':
+    if plot_file_name:
         fig.savefig(plot_file_name)
 
 
