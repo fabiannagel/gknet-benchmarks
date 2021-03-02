@@ -26,17 +26,17 @@ class ComparisonWithoutStress(unittest.TestCase):
 
 
     def _create_jaxmd_calculator(self, atoms: Atoms) -> JmdLennardJonesPair:
-        return JmdLennardJonesPair.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, adjust_radii=True, jit=False)
+        return JmdLennardJonesPair.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)
 
 
     def setUp(self):
         self._ase = self._create_ase_calculator()
         self._r_onset = self._ase.r_onset
         self._r_cutoff = self._ase.r_cutoff
-        self._ase_result = self._ase.calculate()
+        self._ase_result = self._ase.calculate()[0]
 
         self._jmd = self._create_jaxmd_calculator(self._ase._atoms)
-        self._jmd_result = self._jmd.calculate()
+        self._jmd_result = self._jmd.calculate()[0]
         
         self._calculators = [self._ase, self._jmd]
         self._results = [self._ase_result, self._jmd_result]

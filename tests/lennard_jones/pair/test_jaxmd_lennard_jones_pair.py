@@ -23,13 +23,13 @@ class JmdLennardJonesPairTest(chex.TestCase):
         super().__init__(methodName)
         key = random.PRNGKey(0)
         R = random.uniform(key, shape=(self._n, 3))        
-        self._calculator = JmdLennardJonesPair.create_potential(self._box_size, self._n, R, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, jit=False)
-        self._stress_calculator = JmdLennardJonesPair.create_potential(self._box_size, self._n, R, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=True, jit=False)
+        self._calculator = JmdLennardJonesPair.create_potential(self._box_size, self._n, R, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, stresses=False, jit=False)
+        self._stress_calculator = JmdLennardJonesPair.create_potential(self._box_size, self._n, R, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=True, stresses=True, jit=False)
 
 
     def setUp(self):
-        self._result = self._calculator.calculate()
-        self._stress_result = self._stress_calculator.calculate()
+        self._result = self._calculator.calculate()[0]
+        self._stress_result = self._stress_calculator.calculate()[0]
 
 
     # TODO: All of these as chex variants w/ and w/o JIT!

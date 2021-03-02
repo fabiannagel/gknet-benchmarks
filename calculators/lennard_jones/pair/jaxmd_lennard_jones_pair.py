@@ -22,19 +22,20 @@ class JmdLennardJonesPair(Calculator):
     # Unite in new parameter box_size_or_displacement? What is the proper way to do this?
 
     # TODO: Create lightweight type for LJ parameters?
-    def __init__(self, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, jit: bool, displacement_fn: Optional[Callable]):
+    def __init__(self, box_size: float, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable]):
         super().__init__(box_size, n, R, stress)
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff
         self._r_onset = r_onset 
         self._stress = stress
+        self._stresses = stress
         self._jit = jit
         self._displacement_fn, self._properties_fn = self._initialize_potential(displacement_fn, stress)
 
 
     @classmethod
-    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, adjust_radii: bool, jit: bool) -> JmdLennardJonesPair:
+    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool) -> JmdLennardJonesPair:
         displacement_fn = new_get_displacement(atoms)
         
         # JAX-MD's LJ implementation multiplies onset and cutoff by sigma. To be compatible w/ ASE's implementation, we need to perform these adjustments.
@@ -42,13 +43,13 @@ class JmdLennardJonesPair(Calculator):
             r_onset /= sigma
             r_cutoff /= sigma
 
-        return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, jit, displacement_fn)
+        return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, displacement_fn)
 
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, jit: bool) -> JmdLennardJonesPair:
+    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool) -> JmdLennardJonesPair:
         '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
-        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, jit, None)
+        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, None)
 
 
     @property
@@ -93,18 +94,21 @@ class JmdLennardJonesPair(Calculator):
 
             symmetrized_strained_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, self._box)            
             deformation_energy_fn = lambda deformation, R: energy_fn(R, box=symmetrized_strained_box_fn(deformation))
+            atomwise_energies = deformation_energy_fn(deformation, R)
 
             total_deformation_energy_fn = lambda deformation, R: jnp.sum(deformation_energy_fn(deformation, R))            
-            deformation_force_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=1)(deformation, R) * -1
-
-            stress_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
-            stresses_fn = lambda deformation, R: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
-
             total_energy = total_deformation_energy_fn(deformation, R)
-            atomwise_energies = deformation_energy_fn(deformation, R)
+
+            deformation_force_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=1)(deformation, R) * -1
             forces = deformation_force_fn(deformation, R)
-            stress = stress_fn(deformation, R)
-            stresses = stresses_fn(deformation, R)
+
+            if self._stress:
+                stress_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
+                stress = stress_fn(deformation, R)
+
+            if self._stresses:            
+                stresses_fn = lambda deformation, R: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
+                stresses = stresses_fn(deformation, R)
 
             return total_energy, atomwise_energies, forces, stress, stresses
 
@@ -119,19 +123,21 @@ class JmdLennardJonesPair(Calculator):
 
             return total_energy, atomwise_energies, forces
 
-        # TODO: Make less hacky
-        if stress:
-            if self._jit:
-                return jit(displacement_fn), jit(compute_properties_with_stress)
-            return displacement_fn, compute_properties_with_stress
 
+        final_compute_properties = None
+
+        if self._stress or self._stresses:
+            final_compute_properties = compute_properties_with_stress
+        else:
+            final_compute_properties = compute_properties
+        
         if self._jit:
-            return jit(displacement_fn), jit(compute_properties)
-        return displacement_fn, compute_properties
+            return jit(displacement_fn), jit(final_compute_properties)
+        return displacement_fn, final_compute_properties
 
 
     def _compute_properties(self) -> Result:
-        if self._stress:
+        if self._stress or self._stresses:
             deformation = jnp.zeros_like(self._box)
             total_energy, atomwise_energies, forces, stress, stresses = self._properties_fn(deformation, self._R)
             return Result(self, self._n, total_energy, atomwise_energies, forces, stress, stresses)
