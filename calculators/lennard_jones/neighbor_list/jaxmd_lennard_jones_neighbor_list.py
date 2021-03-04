@@ -25,6 +25,11 @@ class JmdLennardJonesNeighborList(Calculator):
         self._stress = stress
         self._stresses = stresses
         self._jit = jit
+
+        # TODO: np.array causes strange indexing errors now and then. migrate everything to jnp.array!
+        self._box = jnp.array(self._box)
+        self._R = jnp.array(self._R)
+
         self._displacement_fn, self._properties_fn = self._initialize_potential(displacement_fn, stress)
 
 
@@ -80,8 +85,7 @@ class JmdLennardJonesNeighborList(Calculator):
             displacement_fn, _ = periodic_general(self._box)
         
         # using an np.array or a list from ASE will cause a strange indexing error
-        box = jnp.array(self._box)
-        neighbor_fn, energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, box, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)
+        neighbor_fn, energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, self._box, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)
         
         if self._jit:
             displacement_fn = jit(displacement_fn)
@@ -95,7 +99,7 @@ class JmdLennardJonesNeighborList(Calculator):
             # 2) Override the box in the energy function
             # 3) Derive forces, stress and stresses as gradients of the deformed energy function
 
-            symmetrized_strained_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box)   
+            symmetrized_strained_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, self._box)   
             if self._jit: symmetrized_strained_box_fn = jit(symmetrized_strained_box_fn)
 
             deformation_energy_fn = lambda deformation, R, *args, **kwargs: energy_fn(R, box=symmetrized_strained_box_fn(deformation), neighbor=nbrs)
@@ -112,13 +116,13 @@ class JmdLennardJonesNeighborList(Calculator):
             # TODO: Why so ugly?
             stress = None
             if self._stress:
-                stress_fn = lambda deformation, R, *args, **kwargs: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(box)
+                stress_fn = lambda deformation, R, *args, **kwargs: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
                 if self._jit: stress_fn = jit(stress_fn)
                 stress = stress_fn(deformation, R, neighbor=nbrs)
  
             stresses = None
             if self._stresses:            
-                stresses_fn = lambda deformation, R, *args, **kwargs: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(box)
+                stresses_fn = lambda deformation, R, *args, **kwargs: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
                 if self._jit: stresses_fn = jit(stresses_fn)
                 stresses = stresses_fn(deformation, R, neighbor=nbrs)
  
@@ -152,7 +156,7 @@ class JmdLennardJonesNeighborList(Calculator):
 
     def _compute_properties(self) -> Result:
         if self._stress or self._stresses:
-            deformation = jnp.zeros_like(self._box)
+            deformation = jnp.zeros_like(jnp.array(self._box))
             total_energy, atomwise_energies, forces, stress, stresses = self._properties_fn(deformation, self._R)
             return Result(self, self._n, total_energy, atomwise_energies, forces, stress, stresses)
         
