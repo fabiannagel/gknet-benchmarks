@@ -14,14 +14,8 @@ from jax.config import config
 config.update("jax_enable_x64", True)
 
 
-class JmdLennardJonesPair(Calculator):
+class JmdLennardJonesNeighborList(Calculator):
 
-    # TODO: box_size and displacement_fn are two different ways to initialize
-    # Either we can create our own displacement_fn via space.periodic(box_size) ...
-    # ... or use the passed displacement_fn that is used when importing an ASE object
-    # Unite in new parameter box_size_or_displacement? What is the proper way to do this?
-
-    # TODO: Create lightweight type for LJ parameters?
     def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable]):
         super().__init__(box, n, R, stress)
         self._sigma = sigma
@@ -54,7 +48,7 @@ class JmdLennardJonesPair(Calculator):
 
     @property
     def description(self) -> str:
-        return "JAX-MD Pair (stress={}, stresses={}, jit={})".format(self._stress, self._stresses, self._jit)
+        return "JAX-MD Neighbor List (stress={}, stresses={}, jit={})".format(self._stress, self._stresses, self._jit)
 
 
     @property
@@ -85,58 +79,75 @@ class JmdLennardJonesPair(Calculator):
         if displacement_fn is None:
             displacement_fn, _ = periodic_general(self._box)
         
-        energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)       
+        # using an np.array or a list from ASE will cause a strange indexing error
+        box = jnp.array(self._box)
+        neighbor_fn, energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, box, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)
+        
+        if self._jit:
+            displacement_fn = jit(displacement_fn)
+            energy_fn = jit(energy_fn)
+
+        nbrs = neighbor_fn(self._R)
+
 
         def compute_properties_with_stress(deformation: jnp.ndarray, R: space.Array):   
             # 1) Set the box under strain using a symmetrized deformation tensor
             # 2) Override the box in the energy function
             # 3) Derive forces, stress and stresses as gradients of the deformed energy function
 
-            symmetrized_strained_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, self._box)            
-            deformation_energy_fn = lambda deformation, R: energy_fn(R, box=symmetrized_strained_box_fn(deformation))
-            atomwise_energies = deformation_energy_fn(deformation, R)
+            symmetrized_strained_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box)   
+            if self._jit: symmetrized_strained_box_fn = jit(symmetrized_strained_box_fn)
 
-            total_deformation_energy_fn = lambda deformation, R: jnp.sum(deformation_energy_fn(deformation, R))            
-            total_energy = total_deformation_energy_fn(deformation, R)
+            deformation_energy_fn = lambda deformation, R, *args, **kwargs: energy_fn(R, box=symmetrized_strained_box_fn(deformation), neighbor=nbrs)
+            if self._jit: deformation_energy_fn = jit(deformation_energy_fn)
 
-            deformation_force_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=1)(deformation, R) * -1
-            forces = deformation_force_fn(deformation, R)
+            total_deformation_energy_fn = lambda deformation, R, *args, **kwargs: jnp.sum(deformation_energy_fn(deformation, R, *args, **kwargs))
+            if self._jit: total_deformation_energy_fn = jit(total_deformation_energy_fn)
+            
+            # deformation_force_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=1)(deformation, R) * -1
+            deformation_force_fn = quantity.force(total_deformation_energy_fn)
+            if self._jit: deformation_force_fn = jit(deformation_force_fn)
+
 
             # TODO: Why so ugly?
             stress = None
             if self._stress:
-                stress_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
-                stress = stress_fn(deformation, R)
-
+                stress_fn = lambda deformation, R, *args, **kwargs: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(box)
+                if self._jit: stress_fn = jit(stress_fn)
+                stress = stress_fn(deformation, R, neighbor=nbrs)
+ 
             stresses = None
             if self._stresses:            
-                stresses_fn = lambda deformation, R: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
-                stresses = stresses_fn(deformation, R)
+                stresses_fn = lambda deformation, R, *args, **kwargs: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(box)
+                if self._jit: stresses_fn = jit(stresses_fn)
+                stresses = stresses_fn(deformation, R, neighbor=nbrs)
+ 
+
+            total_energy = total_deformation_energy_fn(deformation, R, neighbor=nbrs)
+            atomwise_energies = deformation_energy_fn(deformation, R, neighbor=nbrs)
+            forces = deformation_force_fn(deformation, R, neighbor=nbrs)
 
             return total_energy, atomwise_energies, forces, stress, stresses
 
 
         def compute_properties(R: space.Array) -> Tuple[jnp.ndarray, float, jnp.ndarray]:
-            total_energy_fn = lambda R: jnp.sum(energy_fn(R))
-            forces_fn = quantity.force(total_energy_fn)
+            total_energy_fn = lambda R, *args, **kwargs: jnp.sum(energy_fn(R, *args, **kwargs))
+            if self._jit: total_energy_fn = jit(total_energy_fn)
 
-            total_energy = total_energy_fn(R)
-            atomwise_energies = energy_fn(R)
-            forces = forces_fn(R)
+            forces_fn = quantity.force(total_energy_fn)
+            if self._jit: forces_fn = jit(forces_fn)
+        
+            total_energy = total_energy_fn(R, neighbor=nbrs)
+            atomwise_energies = energy_fn(R, neighbor=nbrs)
+            forces = forces_fn(R, neighbor=nbrs)
 
             return total_energy, atomwise_energies, forces
 
 
-        final_compute_properties = None
-
         if self._stress or self._stresses:
-            final_compute_properties = compute_properties_with_stress
-        else:
-            final_compute_properties = compute_properties
+            return displacement_fn, compute_properties_with_stress
         
-        if self._jit:
-            return jit(displacement_fn), jit(final_compute_properties)
-        return displacement_fn, final_compute_properties
+        return displacement_fn, compute_properties
 
 
     def _compute_properties(self) -> Result:

@@ -65,7 +65,7 @@ class AseLennardJonesPair(Calculator):
 
     @property
     def description(self):
-        return "ASE Lennard-Jones Calculator"
+        return "ASE Neighbor List"
 
 
     @property

@@ -28,6 +28,8 @@ for n in system_sizes:
     jmd1.warm_up() 
     results.extend(jmd1.calculate(runs))
 
+    break
+
     # JAX-MD: stress=True, stresses=False, jit=True
     jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
     jmd2.warm_up() 
