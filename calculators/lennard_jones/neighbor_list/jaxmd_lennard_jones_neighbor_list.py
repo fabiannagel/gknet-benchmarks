@@ -166,6 +166,8 @@ class JmdLennardJonesNeighborList(Calculator):
     def warm_up(self):
         if not self._jit:
             raise RuntimeError("Warm-up only implemented for jit=True")
+
+        # TODO: Warm up should probably pre-compute neighbor list so that it is not re-computed later on
         self._compute_properties()
 
     

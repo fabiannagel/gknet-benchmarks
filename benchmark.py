@@ -3,7 +3,7 @@ from utils import *
 from calculators.calculator import Result
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
 from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
-from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
+from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 
 sigma = 2.0
 epsilon = 1.5
@@ -28,8 +28,6 @@ for n in system_sizes:
     jmd1.warm_up() 
     results.extend(jmd1.calculate(runs))
 
-    break
-
     # JAX-MD: stress=True, stresses=False, jit=True
     jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
     jmd2.warm_up() 
@@ -45,12 +43,21 @@ for n in system_sizes:
     # JAX-MD: stress=False, stresses=False, jit=False
     jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
     results.extend(jmd_nojit.calculate(runs))
-    
 
-    # asax: stress=True, stresses=False, jit=True
-    asax = AsaxLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True)
-    asax.warm_up()
-    results.extend(asax.calculate(runs))
 
+    # JAX-MD Neighbor List:     stress=True, stresses=True, jit=True
+    # jmd_nl1 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
+    # jmd_nl1.warm_up()    
+    # results.extend(jmd_nl1.calculate(runs))
+
+    # JAX-MD Neighbor List:     stress=True, stresses=False, jit=True
+    # jmd_nl2 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
+    # jmd_nl2.warm_up()    
+    # results.extend(jmd_nl2.calculate(runs))
+
+    # JAX-MD Neighbor List:     stress=False, stresses=False, jit=True
+    # jmd_nl3 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
+    # jmd_nl3.warm_up()    
+    # results.extend(jmd_nl3.calculate(runs))
 
 persist_results(results, runs)

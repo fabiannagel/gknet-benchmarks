@@ -147,3 +147,37 @@ def plot_runtimes(results: List[Result],
 
 
 
+def get_calculator_description(results: List[Result]):
+    descriptions = set(map(lambda r: r.calculator.description, results))
+    if len(descriptions) > 1:
+        raise RuntimeError("Expected only results of a single calculator, got multiple.")
+    return list(descriptions)[0]
+    
+
+def plot_runtime_variances(results: List[Result], ):
+    '''For results of a single calculator, visualize the runtimes over indices separately for each system sizes'''
+
+    if not results:
+        raise RuntimeError("Provided result list is empty.")
+
+    system_sizes = sorted(set(map(lambda r: r.calculator.n, results)))
+
+    fig = plt.figure(figsize=(20, 10))
+    fig.subplots_adjust(hspace=0.5, wspace=0.15)
+    n_columns = 2
+    n_rows = int(np.ceil(len(system_sizes) / n_columns))
+    
+    suptitle = "Computation time of multiple runs with the same system size\nCalculator: {}".format(get_calculator_description(results))
+    fig.suptitle(suptitle)
+
+    for i, n in enumerate(system_sizes):
+        rs = list(filter(lambda r: r.calculator.n == n, results))
+        computation_times = list([r.computation_time for r in rs])  
+
+        ax = fig.add_subplot(n_rows, n_columns, i + 1)
+        ax.plot(computation_times)
+
+        subplot_title = "n = {}".format(n)
+        ax.set_title(subplot_title)
+
+    
