@@ -1,6 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from calculators.calculator import Calculator
 import numpy as np
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from calculators.calculator import Calculator
+    
 
 @dataclass
 class Result():
@@ -13,3 +19,7 @@ class Result():
     stress: float
     stresses: np.ndarray
     computation_time: float = None
+
+
+
+# TODO: JaxResult w/ jnp.ndarray or DeviceArray. What's the difference?

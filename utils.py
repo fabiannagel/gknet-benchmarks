@@ -37,7 +37,6 @@ def new_get_displacement(atoms):
         Rb_scaled = new_transform(inverse_cell, Rb)
         return displacement_in_scaled_coordinates(Ra_scaled, Rb_scaled, **kwargs)
 
-    # TODO: Verify JIT behavior
     return displacement
 
 

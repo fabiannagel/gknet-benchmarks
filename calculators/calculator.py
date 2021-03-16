@@ -4,25 +4,14 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 from ase.atoms import Atoms
+from calculators.result import Result
 import numpy as np
 import time
 import itertools
-# 
-# @dataclass
-# class Result():
-    # calculator: Calculator
-    # n: int
-# 
-    # energy: float
-    # energies: np.ndarray
-    # forces: np.ndarray
-    # stress: float
-    # stresses: np.ndarray
-    # computation_time: float = None
 
 
 class Calculator(ABC):
-    _results: List[Result] = []
+    # _results: List[Result] = []
     _atoms: Optional[Atoms]
 
     def __init__(self, box: np.ndarray, n: int, R: np.ndarray, computes_stress: bool) -> None:
@@ -41,8 +30,8 @@ class Calculator(ABC):
 
     @classmethod
     def create_potential(cls, box_size: float, n: int, R: Optional[np.ndarray], *args) -> cls:
-        if R is None or len(R) == 0:
-            R = cls._generate_R(cls, n, box_size)
+        # if R is None or len(R) == 0:
+        #     R = cls._generate_R(cls, n, box_size)
         box = box_size * np.eye(3)
         return cls(box, n, R, *args)
 
@@ -59,9 +48,9 @@ class Calculator(ABC):
         """Returns a matrix of pairwise atom distances of shape (n, 3)."""
         pass
     
-    @property
-    def results(self) -> List[Result]:
-        return self._results
+    # @property
+    # def results(self) -> List[Result]:
+        # return self._results
 
     @property
     def box(self) -> np.ndarray:
@@ -106,5 +95,5 @@ class Calculator(ABC):
             r.computation_time = time.monotonic() - start   
             results.append(r)
         
-        self._results.extend(results)
+        # self._results.extend(results)
         return results
