@@ -20,6 +20,7 @@ for n in system_sizes:
 
     # ASE
     ase = AseLennardJonesPair.create_potential(n, sigma, epsilon, r_cutoff=None, r_onset=None)
+    ase.warm_up()
     results.extend(ase.calculate(runs))
 
     
@@ -41,8 +42,10 @@ for n in system_sizes:
 
 
     # JAX-MD: stress=False, stresses=False, jit=False
-    jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
-    results.extend(jmd_nojit.calculate(runs))
+    # jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
+    # results.extend(jmd_nojit.calculate(runs))
+
+
 
 
     # JAX-MD Neighbor List:     stress=True, stresses=True, jit=True

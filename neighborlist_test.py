@@ -4,7 +4,6 @@ from utils import *
 from calculators.calculator import Result
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
 from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
-from calculators.lennard_jones.pair.asax_lennard_jones_pair import AsaxLennardJonesPair
 
 sigma = 2.0
 epsilon = 1.5
@@ -18,7 +17,7 @@ r1 = ase.calculate()[0]
 
 # JAX-MD: stress=True, stresses=True, jit=True
 jmd1 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
-# jmd1.warm_up() 
+jmd1.warm_up() 
 r2 = jmd1.calculate()[0]
 
 

@@ -179,5 +179,8 @@ def plot_runtime_variances(results: List[Result], ):
 
         subplot_title = "n = {}".format(n)
         ax.set_title(subplot_title)
+    
+        # fig.set_xlabel("Run index")
+        # fig.set_ylabel("Runtime")
 
     

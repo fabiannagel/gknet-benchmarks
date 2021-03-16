@@ -146,6 +146,9 @@ class JmdLennardJonesPair(Calculator):
             return Result(self, self._n, total_energy, atomwise_energies, forces, stress, stresses)
         
         total_energy, atomwise_energies, forces = self._properties_fn(self._R)
+
+        # TODO: Convert to numpy arrays
+
         return Result(self, self._n, total_energy, atomwise_energies, forces, None, None)
 
     def warm_up(self):

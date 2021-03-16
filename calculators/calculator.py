@@ -24,7 +24,6 @@ class Result():
 class Calculator(ABC):
     _results: List[Result] = []
     _atoms: Optional[Atoms]
-    # _energy_fn: Callable
 
     def __init__(self, box: np.ndarray, n: int, R: np.ndarray, computes_stress: bool) -> None:
         self._box = box
@@ -102,9 +101,9 @@ class Calculator(ABC):
     def calculate(self, runs=1) -> List[Result]:
         results = []
         for _ in itertools.repeat(None, runs):
-            start = time.time()
+            start = time.monotonic()
             r = self._compute_properties()
-            r.computation_time = time.time() - start   
+            r.computation_time = time.monotonic() - start   
             results.append(r)
         
         self._results.extend(results)

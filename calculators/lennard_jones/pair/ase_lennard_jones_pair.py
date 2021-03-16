@@ -8,6 +8,8 @@ from ase import Atoms
 from ase.build import bulk
 from ase.calculators.lj import LennardJones
 from ase.calculators.calculator import PropertyNotImplementedError
+from ase.constraints import voigt_6_to_full_3x3_stress
+
 
 import numpy as np
 import itertools
@@ -28,7 +30,7 @@ class AseLennardJonesPair(Calculator):
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AseLennardJonesPair:
         obj: AseLennardJonesPair = super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset)
         obj._atoms = atoms
-        obj._atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=r_cutoff, ro=r_onset, smooth=True)
+        obj._calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=r_cutoff, ro=r_onset, smooth=True)
         return obj    
 
 
@@ -90,13 +92,23 @@ class AseLennardJonesPair(Calculator):
 
 
     def _compute_properties(self) -> Result:
-        energy = self._atoms.get_potential_energy()
-        energies = self._atoms.get_potential_energies()
-        forces = self._atoms.get_forces()
+        self._calc.atoms = None
+        # self._calc.nl = None
+        self._calc.calculate(atoms=self._atoms)
 
-        stress = self._atoms.get_stress(voigt=False)
-        stresses = self._atoms.get_stresses(voigt=False)
+        energy = self._calc.results['energy']
+        energies = self._calc.results['energies']
+        forces = self._calc.results['forces']
+        stress = voigt_6_to_full_3x3_stress(self._calc.results['stress'])
+        stresses = voigt_6_to_full_3x3_stress(self._calc.results['stresses'])
+
         return Result(self, self._n, energy, energies, forces, stress, stresses)
+
+
+    def warm_up(self):
+        self._calc.nl = None
+        self._compute_properties()
+
         
     def __getstate__(self):
         state = self.__dict__.copy()
