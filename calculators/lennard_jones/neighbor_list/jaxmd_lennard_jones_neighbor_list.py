@@ -3,7 +3,9 @@ from typing import Callable, Optional, Tuple
 from functools import partial
 from utils import new_get_displacement
 
-from calculators.calculator import Calculator, Result
+from calculators.calculator import Calculator
+from calculators.result import Result
+
 from ase.atoms import Atoms
 from jax_md import space, energy, quantity
 from periodic_general import periodic_general, transform

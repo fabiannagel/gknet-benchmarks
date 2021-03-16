@@ -2,7 +2,8 @@ from __future__ import annotations
 import warnings
 
 from typing import List, Optional
-from calculators.calculator import Calculator, Result
+from calculators.calculator import Calculator
+from calculators.result import Result
 
 from ase import Atoms
 from ase.build import bulk

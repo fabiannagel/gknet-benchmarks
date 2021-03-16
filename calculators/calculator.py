@@ -7,18 +7,18 @@ from ase.atoms import Atoms
 import numpy as np
 import time
 import itertools
-
-@dataclass
-class Result():
-    calculator: Calculator
-    n: int
-
-    energy: float
-    energies: np.ndarray
-    forces: np.ndarray
-    stress: float
-    stresses: np.ndarray
-    computation_time: float = None
+# 
+# @dataclass
+# class Result():
+    # calculator: Calculator
+    # n: int
+# 
+    # energy: float
+    # energies: np.ndarray
+    # forces: np.ndarray
+    # stress: float
+    # stresses: np.ndarray
+    # computation_time: float = None
 
 
 class Calculator(ABC):

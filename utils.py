@@ -8,7 +8,8 @@ from periodic_general import periodic_general as new_periodic_general
 from periodic_general import inverse as new_inverse
 from periodic_general import transform as new_transform
 
-from calculators.calculator import Calculator, Result
+from calculators.calculator import Calculator
+from calculators.result import Result
 
 import matplotlib.pyplot as plt
 from collections import defaultdict
