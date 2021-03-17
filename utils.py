@@ -59,9 +59,15 @@ def create_output_path(runs: int) -> str:
     return output_path
 
 
-def persist_results(results: List[Result], runs: int):
-    base_path = create_output_path(runs)
-    file_name = "results_{}_runs.pickle".format(runs)
+def persist_results(results: List[Result], runs: int, descriptor=''):  
+    if descriptor:
+        file_name = "results_{}_{}_runs.pickle".format(descriptor, runs)
+        output_folder_suffix = "{}_{}".format(descriptor, runs)
+    else:
+        file_name = "results_{}_runs.pickle".format(runs)
+        output_folder_suffix = str(runs)
+
+    base_path = create_output_path(output_folder_suffix)
     output_path = os.path.join(base_path, file_name) 
 
     with open(output_path, 'wb') as handle:

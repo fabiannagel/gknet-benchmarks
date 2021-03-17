@@ -106,7 +106,7 @@ class AseLennardJonesPair(Calculator):
         return Result(self, self._n, energy, energies, forces, stress, stresses)
 
 
-    def warm_up(self):
+    def _perform_warm_up(self):
         self._calc.nl = None
         self._compute_properties()
 

@@ -11,8 +11,7 @@ import itertools
 
 
 class Calculator(ABC):
-    # _results: List[Result] = []
-    _atoms: Optional[Atoms]
+    _warmup_time: float = None
 
     def __init__(self, box: np.ndarray, n: int, R: np.ndarray, computes_stress: bool) -> None:
         self._box = box
@@ -82,6 +81,26 @@ class Calculator(ABC):
         pass    
 
 
+    def _time_execution(self, callable: Callable):
+        start = time.monotonic()
+        return_val = callable()
+        elapsed_seconds = time.monotonic() - start   
+        return elapsed_seconds, return_val
+
+
+    @abstractmethod
+    def _perform_warm_up(self):
+        pass
+
+
+    def warm_up(self):
+        if self._warmup_time:
+            raise ValueError("A warm-up has already been performed.")
+        
+        elapsed_seconds, _ = self._time_execution(self._perform_warm_up)
+        self._warmup_time = elapsed_seconds
+
+
     @abstractmethod
     def _compute_properties(self) -> Result: 
         pass
@@ -89,11 +108,10 @@ class Calculator(ABC):
 
     def calculate(self, runs=1) -> List[Result]:
         results = []
-        for _ in itertools.repeat(None, runs):
-            start = time.monotonic()
-            r = self._compute_properties()
-            r.computation_time = time.monotonic() - start   
+
+        for _ in itertools.repeat(None, runs):       
+            elapsed_seconds, r = self._time_execution(self._compute_properties)
+            r.computation_time = elapsed_seconds
             results.append(r)
         
-        # self._results.extend(results)
         return results

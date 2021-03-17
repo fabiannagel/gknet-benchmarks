@@ -165,7 +165,7 @@ class JmdLennardJonesNeighborList(Calculator):
         total_energy, atomwise_energies, forces = self._properties_fn(self._R)
         return Result(self, self._n, total_energy, atomwise_energies, forces, None, None)
 
-    def warm_up(self):
+    def _perform_warm_up(self):
         if not self._jit:
             raise RuntimeError("Warm-up only implemented for jit=True")
 
