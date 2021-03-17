@@ -29,6 +29,7 @@ class Calculator(ABC):
 
     @classmethod
     def create_potential(cls, box_size: float, n: int, R: Optional[np.ndarray], *args) -> cls:
+        # TODO: Decide if generating our own distances here is a valid use case. Don't we always initialize via ASE in the end?
         # if R is None or len(R) == 0:
         #     R = cls._generate_R(cls, n, box_size)
         box = box_size * np.eye(3)
@@ -47,10 +48,6 @@ class Calculator(ABC):
         """Returns a matrix of pairwise atom distances of shape (n, 3)."""
         pass
     
-    # @property
-    # def results(self) -> List[Result]:
-        # return self._results
-
     @property
     def box(self) -> np.ndarray:
         return self._box
@@ -108,10 +105,9 @@ class Calculator(ABC):
 
     def calculate(self, runs=1) -> List[Result]:
         results = []
-
         for _ in itertools.repeat(None, runs):       
             elapsed_seconds, r = self._time_execution(self._compute_properties)
             r.computation_time = elapsed_seconds
             results.append(r)
-        
+    
         return results

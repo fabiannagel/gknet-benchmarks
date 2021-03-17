@@ -1,43 +1,10 @@
 import os
-from os import system
-from typing import Callable, Iterable, List, Set, Union, Type
-import warnings
-
-from jax_md import space
-from periodic_general import periodic_general as new_periodic_general
-from periodic_general import inverse as new_inverse
-from periodic_general import transform as new_transform
-
-from calculators.calculator import Calculator
+from typing import Callable, Iterable, List
 from calculators.result import Result
-
 import matplotlib.pyplot as plt
-from collections import defaultdict
 import numpy as np
 import pickle
 from itertools import groupby
-
-
-def new_get_displacement(atoms):
-    '''what asax.utils.get_displacement() does, only with functions from the new periodic_general()'''
-    # TODO: Refactor once new periodic_general() is released
-
-    if not all(atoms.get_pbc()):
-        displacement, _ = space.free()
-        warnings.warn("Atoms object without periodic boundary conditions passed!")
-        return displacement
-
-    cell = atoms.get_cell().array
-    inverse_cell = new_inverse(cell)
-    displacement_in_scaled_coordinates, _ = new_periodic_general(cell)
-
-    # **kwargs are now used to feed through the box information
-    def displacement(Ra: space.Array, Rb: space.Array, **kwargs) -> space.Array:
-        Ra_scaled = new_transform(inverse_cell, Ra)
-        Rb_scaled = new_transform(inverse_cell, Rb)
-        return displacement_in_scaled_coordinates(Ra_scaled, Rb_scaled, **kwargs)
-
-    return displacement
 
 
 def generate_system_sizes(z_max: int, unit_cell_size):
@@ -158,6 +125,15 @@ def get_calculator_description(results: List[Result]):
     if len(descriptions) > 1:
         raise RuntimeError("Expected only results of a single calculator, got multiple.")
     return list(descriptions)[0]
+
+
+def contains_multiple_memory_allocation_modes(results: List[Result]) -> bool:
+    # Breaking results down by XLA memory allocation modes only makes sense for JAX-MD results
+    if not all("JAX-MD" in r.calculator.description for r in results):
+        return False
+
+    memory_allocation_modes = set(map(lambda r: r.calculator.memory_allocation_mode, results))
+    return len(memory_allocation_modes) > 1   
     
 
 def plot_runtime_variances(results: List[Result], ):
@@ -172,6 +148,10 @@ def plot_runtime_variances(results: List[Result], ):
     fig.subplots_adjust(hspace=0.5, wspace=0.15)
     n_columns = 2
     n_rows = int(np.ceil(len(system_sizes) / n_columns))
+
+    if contains_multiple_memory_allocation_modes(results):
+        print("yep")
+    
     
     suptitle = "Computation time of multiple runs with the same system size\nCalculator: {}".format(get_calculator_description(results))
     fig.suptitle(suptitle)

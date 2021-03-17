@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, Dict
 from functools import partial
-from utils import new_get_displacement
-
+import jax_utils
+from jax_utils import XlaMemoryFlag
 from calculators.calculator import Calculator
 from calculators.result import Result
 
@@ -10,8 +10,8 @@ from ase.atoms import Atoms
 from jax_md import space, energy, quantity
 from periodic_general import periodic_general, transform
 import jax.numpy as jnp
-from jax import grad, random, jit, value_and_grad
-from jax.api import jacfwd, vmap
+from jax import grad, jit
+from jax.api import jacfwd
 from jax.config import config
 config.update("jax_enable_x64", True)
 
@@ -37,7 +37,7 @@ class JmdLennardJonesNeighborList(Calculator):
 
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool) -> JmdLennardJonesPair:
-        displacement_fn = new_get_displacement(atoms)
+        displacement_fn = jax_utils.new_get_displacement(atoms)
         
         # JAX-MD's LJ implementation multiplies onset and cutoff by sigma. To be compatible w/ ASE's implementation, we need to perform these adjustments.
         if adjust_radii:
@@ -59,28 +59,19 @@ class JmdLennardJonesNeighborList(Calculator):
 
 
     @property
+    def memory_allocation_mode(self) -> Dict[XlaMemoryFlag, str]:
+        return self._memory_allocation_modes
+
+
+    @property
     @partial(jit, static_argnums=0)
     def pairwise_distances(self):
-        # displacement_fn takes two vectors Ra and Rb
-        # space.map_product() vmaps it twice along rows and columns such that we can input matrices
-        dR_dimensionwise_fn = space.map_product(self._displacement_fn)
-        dR_dimensionwise = dR_dimensionwise_fn(self._R, self._R)    # ... resulting in 4 dimension-wise distance matrices shaped (n, n, 3)
-
-        # Computing the vector magnitude for every row vector:
-        # First, map along the first axis of the initial (n, n, 3) matrix. the "output" will be (n, 3)
-        # Secondly, within the mapped (n, 3) matrix, map along the zero-th axis again (one atom).
-        # Here, apply the magnitude function for the atom's displacement row vector.
-        magnitude_fn = lambda x: jnp.sqrt(jnp.sum(x**2))
-        vectorized_fn = vmap(vmap(magnitude_fn, in_axes=0), in_axes=0)
-        return vectorized_fn(dR_dimensionwise)
+        return jax_utils.compute_pairwise_distances(self._displacement_fn)
 
 
     def _generate_R(self, n: int, scaling_factor: float) -> jnp.ndarray:
-         # TODO: Build a global service to manage and demand PRNGKeys for JAX-based simulations
-        key = random.PRNGKey(0)
-        key, subkey = random.split(key)
-        return random.uniform(subkey, shape=(n, 3)) * scaling_factor
-
+        return jax_utils.generate_R(n, scaling_factor)
+        
 
     def _initialize_potential(self, displacement_fn: Optional[Callable], stress: bool) -> Tuple[space.Space, Callable[[space.Array]]]:
         if displacement_fn is None:
@@ -165,6 +156,7 @@ class JmdLennardJonesNeighborList(Calculator):
         total_energy, atomwise_energies, forces = self._properties_fn(self._R)
         return Result(self, self._n, total_energy, atomwise_energies, forces, None, None)
 
+
     def _perform_warm_up(self):
         if not self._jit:
             raise RuntimeError("Warm-up only implemented for jit=True")
@@ -182,6 +174,7 @@ class JmdLennardJonesNeighborList(Calculator):
         del state['_displacement_fn']
         del state['_properties_fn']
         return state
+
 
     def __setstate__(self, state):
         # Restore instance attributes (i.e., filename and lineno).

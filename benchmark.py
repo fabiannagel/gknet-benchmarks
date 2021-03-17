@@ -64,3 +64,8 @@ for n in system_sizes:
     # results.extend(jmd_nl3.calculate(runs))
 
 persist_results(results, runs)
+
+
+# TODO: 
+# - Afterwards, switch to slow memory allocation mode and verify fixes.
+# - Compare timings of both memory allocation modes. See project_notes.txt in Sublime.
