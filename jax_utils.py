@@ -1,11 +1,15 @@
+from typing import Callable, Tuple
 from jax import vmap, random
+from jax.api import grad, jacfwd, jit
+from jax_md import energy
+from jax_md.energy import DisplacementFn
 from calculators.calculator import Calculator
 from os import environ
 from enum import Enum
 import warnings
-from jax_md import space
+from jax_md import space, quantity
 import jax.numpy as jnp
-from periodic_general import periodic_general as new_periodic_general
+from periodic_general import periodic_general as new_periodic_general, transform
 from periodic_general import inverse as new_inverse
 from periodic_general import transform as new_transform
 
@@ -79,3 +83,74 @@ def new_get_displacement(atoms):
         return displacement_in_scaled_coordinates(Ra_scaled, Rb_scaled, **kwargs)
 
     return displacement
+
+
+def jit_if_wanted(do_jit: bool, *args) -> Tuple:
+
+    if not all([callable(a) for a in args]):
+        raise ValueError("Expected a list of callables.")
+
+    if not do_jit:
+        return args
+    
+    return tuple([jit(f) for f in args])
+
+
+
+
+PotentialFn = Callable[[space.Array], Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, None, None]]
+PotentialProperties = Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]
+
+def get_strained_pair_potential(box: jnp.ndarray, displacement_fn: DisplacementFn, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, compute_stress: bool, compute_stresses: bool) -> PotentialFn:
+
+    def strained_potential_fn(R: space.Array) -> PotentialProperties:
+        # 1) Set the box under strain using a symmetrized deformation tensor
+        # 2) Override the box in the energy function
+        # 3) Derive forces, stress and stresses as gradients of the deformed energy function
+
+        # define a default energy function, an infinitesimal deformation and a function to apply the transformation to the box
+        energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff, r_onset=r_onset, per_particle=True)                     
+        deformation = jnp.zeros_like(box)
+
+        # a function to symmetrize the deformation tensor and apply it to the box
+        transform_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
+
+        # atomwise and total energy functions that act on the transformed box. same for force, stress and stresses.
+        deformation_energy_fn = lambda deformation, R: energy_fn(R, box=transform_box_fn(deformation))
+        total_energy_fn = lambda deformation, R: jnp.sum(deformation_energy_fn(deformation, R))            
+
+        force_fn = lambda deformation, R: grad(total_energy_fn, argnums=1)(deformation, R) * -1
+
+        stress = None
+        if compute_stress:
+            stress_fn = lambda deformation, R: grad(total_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(box)
+            stress = stress_fn(deformation, R)  
+
+        stresses = None
+        if compute_stresses:
+            stresses_fn = lambda deformation, R: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(box)
+            stresses = stresses_fn(deformation, R)
+
+        total_energy = total_energy_fn(deformation, R)
+        atomwise_energies = deformation_energy_fn(deformation, R)
+        forces = force_fn(deformation, R)
+
+        return total_energy, atomwise_energies, forces, stress, stresses
+
+    return strained_potential_fn
+
+
+def get_unstrained_pair_potential(box: jnp.ndarray, displacement_fn: DisplacementFn, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> PotentialFn:
+
+    def unstrained_potential_fn(R: space.Array) -> PotentialProperties:
+        energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=sigma, epsilon=epsilon, r_onset=r_onset, r_cutoff=r_cutoff, per_particle=True)       
+        total_energy_fn = lambda R: jnp.sum(energy_fn(R))
+        forces_fn = quantity.force(total_energy_fn)
+
+        total_energy = total_energy_fn(R)
+        atomwise_energies = energy_fn(R)
+        forces = forces_fn(R)
+
+        return total_energy, atomwise_energies, forces, None, None
+
+    return unstrained_potential_fn

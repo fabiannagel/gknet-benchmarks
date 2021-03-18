@@ -4,8 +4,7 @@ import jax_utils
 from calculators.result import Result
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
 from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
-import calculators.lennard_jones.pair.jaxmd_lennard_jones_pair as foo
-
+from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 
 def run_benchmark_loop(system_sizes: List[int]) -> List[Result]:
     results: List[Result] = []
@@ -19,17 +18,17 @@ def run_benchmark_loop(system_sizes: List[int]) -> List[Result]:
         # results.extend(ase.calculate(runs))
 
 
-        # JAX-MD: stress=True, stresses=True, jit=True
+        # # JAX-MD: stress=True, stresses=True, jit=True
         jmd1 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
         jmd1.warm_up() 
         results.extend(jmd1.calculate(runs))
 
-        # JAX-MD: stress=True, stresses=False, jit=True
-        jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
-        jmd2.warm_up() 
-        results.extend(jmd2.calculate(runs))
-
-        # JAX-MD: stress=False, stresses=False, jit=True
+        # # JAX-MD: stress=True, stresses=False, jit=True
+        # jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
+        # jmd2.warm_up() 
+        # results.extend(jmd2.calculate(runs))
+ 
+        # # JAX-MD: stress=False, stresses=False, jit=True
         jmd3 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
         jmd3.warm_up() 
         results.extend(jmd3.calculate(runs))
