@@ -6,7 +6,7 @@ import warnings
 import jax_utils
 from jax_utils import PotentialFn, XlaMemoryFlag
 from calculators.calculator import Calculator
-from calculators.result import Result
+from calculators.result import JaxResult, Result
 from ase.atoms import Atoms
 from jax_md import space
 from jax_md.space import DisplacementFn
@@ -91,7 +91,7 @@ class JmdLennardJonesPair(Calculator):
 
     def _compute_properties(self) -> Result:
         properties = self._potential_fn(self._R)
-        return Result(self, self._n, *properties)
+        return JaxResult(self, self._n, *properties)
 
 
     def _perform_warm_up(self):

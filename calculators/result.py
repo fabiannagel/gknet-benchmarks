@@ -33,6 +33,6 @@ class JaxResult(Result):
         energy.block_until_ready()
         energies.block_until_ready()
         forces.block_until_ready()
-        stress.block_until_ready()
-        stresses.block_until_ready()
+        if stress is not None: stress.block_until_ready()
+        if stresses is not None: stresses.block_until_ready()
         super().__init__(calculator, n, energy, energies, forces, stress, stresses)
