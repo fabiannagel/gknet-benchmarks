@@ -38,10 +38,6 @@ def get_memory_allocation_mode() -> XlaMemoryFlag:
     return active_flags[0]
 
 
-def get_calculator_description(calculator: Calculator) -> str:
-    return "JAX-MD Pair (stress={}, stresses={}, jit={}, memory allocation={})".format(calculator._stress, calculator._stresses, calculator._jit, calculator._memory_allocation_mode)
-    
-
 def compute_pairwise_distances(displacement_fn: space.DisplacementFn, R: jnp.ndarray):
     # displacement_fn takes two vectors Ra and Rb
     # space.map_product() vmaps it twice along rows and columns such that we can input matrices
@@ -216,6 +212,19 @@ def get_state(calculator: Calculator) -> Dict:
     del state['_displacement_fn']
     del state['_potential_fn']
     del state['_R']
+
+    # neighbor list calculator
+    if '_energy_fn' in state: del state['_energy_fn']
+    if '_neighbor_fn' in state: del state['_neighbor_fn']
+    if '_neighbors' in state: del state['_neighbors']
+
+    #try:
+    #    del state['_energy_fn']
+    #    del state['_neighbor_fn']
+    #    del state['_neighbors']
+    #except KeyError:
+    #    pass
+
     return state
 
 
@@ -228,3 +237,7 @@ def set_state(calculator: Calculator, state: Dict):
     calculator._displacement_fn = error_fn
     calculator._potential_fn = error_fn
     calculator._R = error_fn
+
+    calculator._energy_fn = error_fn
+    calculator._neighbor_fn = error_fn
+    calculator._neighbors = error_fn

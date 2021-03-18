@@ -61,7 +61,7 @@ class JmdLennardJonesNeighborList(Calculator):
 
     @property
     def description(self) -> str:
-        return jax_utils.get_calculator_description(self)
+        return "JAX-MD Neighbor List (stress={}, stresses={}, jit={}, memory allocation={})".format(self._stress, self._stresses, self._jit, self._memory_allocation_mode)
 
 
     @property
