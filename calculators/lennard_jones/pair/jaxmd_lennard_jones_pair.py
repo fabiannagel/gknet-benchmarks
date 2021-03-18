@@ -166,8 +166,6 @@ class JmdLennardJonesPair(Calculator):
 
     
     def __getstate__(self):
-        print(self.__hash__)
-
         # Copy the object's state from self.__dict__ which contains
         # all our instance attributes. Always use the dict.copy()
         # method to avoid modifying the original state.
@@ -190,5 +188,5 @@ class JmdLennardJonesPair(Calculator):
         self._displacement_fn = error_fn
         self._properties_fn = error_fn
 
-        self.from_ase_atoms = error_fn
-        self.create_potential = error_fn
+        # self.from_ase_atoms = error_fn
+        # self.create_potential = error_fn

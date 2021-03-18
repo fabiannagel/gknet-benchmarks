@@ -34,29 +34,6 @@ def get_memory_allocation_mode() -> XlaMemoryFlag:
     return active_flags[0]
 
 
-def set_memory_allocation_mode(flag: XlaMemoryFlag, value: str):
-    if flag is XlaMemoryFlag.DEFAULT:
-        return  # placeholder flag, nothing to do
-    if not flag in XlaMemoryFlag:
-        raise ValueError("Passed flag is not a valid XLA memory allocation mode.")
-    environ[flag.value] = value
-
-
-# def clear_memory_allocation_mode(flag: XlaMemoryFlag):
-    # if not flag in XlaMemoryFlag:
-        # raise ValueError("Passed flag is not a valid XLA memory allocation mode.")
-    # del environ[flag.value]
-    
-
-def reset_memory_allocation_mode():
-    '''Removes all XLA memory allocation flags to default settings.'''
-    for flag in XlaMemoryFlag:
-        try:
-            del environ[flag.value]
-        except KeyError:
-            continue
-    
-
 def get_calculator_description(calculator: Calculator) -> str:
     return "JAX-MD Pair (stress={}, stresses={}, jit={}, memory allocation={})".format(calculator._stress, calculator._stresses, calculator._jit, calculator._memory_allocation_mode)
     
