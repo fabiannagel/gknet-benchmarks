@@ -7,12 +7,16 @@ import pickle
 from itertools import groupby
 
 
-def generate_system_sizes(z_max: int, unit_cell_size):
+def generate_unit_cells(z_max: int, unit_cell_size):
     ns = []
     for i in range(z_max):
         n = unit_cell_size * (i+1)**3
         ns.append(n)
     return ns
+
+
+def generate_system_sizes(start: int, stop: int, step=100) -> List[int]:
+    return list(range(start, stop+step, step))
 
 
 def create_output_path(runs: int) -> str:

@@ -5,6 +5,7 @@ from typing import List, Optional
 from calculators.calculator import Calculator
 from calculators.result import Result
 
+from vibes.helpers.supercell import make_cubic_supercell
 from ase import Atoms
 from ase.build import bulk
 from ase.calculators.lj import LennardJones
@@ -42,7 +43,10 @@ class AseLennardJonesPair(Calculator):
         If omitted, r_cutoff is set to half the maximum super cell lattice vector magnitude.
         If omitted, r_onset is set to 0.8 * r_cutoff
         '''        
-        atoms = bulk('Ar', cubic=True) * cls._compute_supercell_multipliers('Ar', n)
+
+        atoms = bulk("Ar", cubic=True)
+        atoms, _ = make_cubic_supercell(atoms, target_size=n)
+        # atoms = bulk('Ar', cubic=True) * cls._compute_supercell_multipliers('Ar', n)
         
         if r_cutoff is None:
             max_box_length = np.max([np.linalg.norm(uv) for uv in atoms.get_cell().array])
