@@ -1,4 +1,4 @@
-from typing import Callable, Tuple
+from typing import Callable, Dict, Tuple
 from jax import vmap, random
 from jax.api import grad, jacfwd, jit
 from jax_md import energy
@@ -96,8 +96,6 @@ def jit_if_wanted(do_jit: bool, *args) -> Tuple:
     return tuple([jit(f) for f in args])
 
 
-
-
 PotentialFn = Callable[[space.Array], Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, None, None]]
 PotentialProperties = Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]
 
@@ -154,3 +152,27 @@ def get_unstrained_pair_potential(box: jnp.ndarray, displacement_fn: Displacemen
         return total_energy, atomwise_energies, forces, None, None
 
     return unstrained_potential_fn
+
+
+# TODO: JaxCalculator
+def get_state(calculator: Calculator) -> Dict:
+    # Copy the object's state from self.__dict__ which contains
+    # all our instance attributes. Always use the dict.copy()
+    # method to avoid modifying the original state.
+    state = calculator.__dict__.copy()
+    # Remove the unpicklable entries.
+    del state['_displacement_fn']
+    del state['_potential_fn']
+    del state['_R']
+    return state
+
+
+def set_state(calculator: Calculator, state: Dict):
+    # Restore instance attributes (i.e., filename and lineno).
+    calculator.__dict__.update(state)
+    # Restore the previously opened file's state. To do so, we need to
+    # reopen it and read from it until the line count is restored.
+    error_fn = lambda *args, **kwargs: print("Pickled instance cannot compute new data")
+    calculator._displacement_fn = error_fn
+    calculator._potential_fn = error_fn
+    calculator._R = error_fn

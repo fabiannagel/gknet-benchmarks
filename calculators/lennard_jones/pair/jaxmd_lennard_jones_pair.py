@@ -102,23 +102,9 @@ class JmdLennardJonesPair(Calculator):
         print("Warm-up finished")
 
     
-    def __getstate__(self):
-        # Copy the object's state from self.__dict__ which contains
-        # all our instance attributes. Always use the dict.copy()
-        # method to avoid modifying the original state.
-        state = self.__dict__.copy()
-        # Remove the unpicklable entries.
-        del state['_displacement_fn']
-        del state['_potential_fn']
-        # TODO: Delete everything that is not needed to keep result file size down
-        return state
+    def __getstate__(self) -> Dict:
+        return jax_utils.get_state(self)
 
 
     def __setstate__(self, state):
-        # Restore instance attributes (i.e., filename and lineno).
-        self.__dict__.update(state)
-        # Restore the previously opened file's state. To do so, we need to
-        # reopen it and read from it until the line count is restored.
-        error_fn = lambda *args, **kwargs: print("Pickled instance cannot compute new data")
-        self._displacement_fn = error_fn
-        self._potential_fn = error_fn
+        jax_utils.set_state(self, state)

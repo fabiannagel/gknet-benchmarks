@@ -29,9 +29,9 @@ def run_benchmark_loop(system_sizes: List[int]) -> List[Result]:
         # results.extend(jmd2.calculate(runs))
  
         # # JAX-MD: stress=False, stresses=False, jit=True
-        jmd3 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
-        jmd3.warm_up() 
-        results.extend(jmd3.calculate(runs))
+        # jmd3 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
+        # jmd3.warm_up() 
+        # results.extend(jmd3.calculate(runs))
 
 
         # JAX-MD: stress=False, stresses=False, jit=False
@@ -61,7 +61,7 @@ sigma = 2.0
 epsilon = 1.5
 runs = 100
 
-system_sizes = generate_system_sizes(z_max=8, unit_cell_size=4)
+system_sizes = generate_system_sizes(z_max=2, unit_cell_size=4)
 xla_flag = jax_utils.get_memory_allocation_mode()
 
 print("Benchmarking system sizes: {}".format(system_sizes))
