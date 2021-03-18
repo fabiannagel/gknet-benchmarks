@@ -10,6 +10,7 @@ from calculators.result import JaxResult, Result
 from ase.atoms import Atoms
 from jax_md import space, energy
 from jax_md.space import DisplacementFn
+from jax_md.energy import NeighborFn, NeighborList
 from periodic_general import periodic_general
 import jax.numpy as jnp
 from jax import jit
@@ -18,6 +19,9 @@ config.update("jax_enable_x64", True)
 
 
 class JmdLennardJonesNeighborList(Calculator):
+    _energy_fn: Callable[[space.Array, NeighborList], space.Array] = None
+    _neighbor_fn: NeighborFn = None
+    _neighbors: NeighborList = None
 
     def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable]):
         super().__init__(box, n, R, stress)
@@ -80,16 +84,15 @@ class JmdLennardJonesNeighborList(Calculator):
             warnings.warn("Using default periodic_general")
             displacement_fn, _ = periodic_general(self._box)
         
-        neighbor_fn, energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, self._box, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)
-
-        # TODO: Move to warmup?
-        neighbors = neighbor_fn(self._R)
+        if self._neighbors is None:
+            self._neighbor_fn, self._energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, self._box, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)
+            self._neighbors = self._neighbor_fn(self._R)
 
         if self._stress or self._stresses:
-            strained_potential = jax_utils.get_strained_neighbor_list_potential(energy_fn, neighbors, self._box, self._stress, self._stresses)
+            strained_potential = jax_utils.get_strained_neighbor_list_potential(self._energy_fn, self._neighbors, self._box, self._stress, self._stresses)
             return jax_utils.jit_if_wanted(self._jit, displacement_fn, strained_potential)
         
-        unstrained_potential = jax_utils.get_unstrained_neighbor_list_potential(energy_fn, neighbors, self._box, self._stress, self._stresses)
+        unstrained_potential = jax_utils.get_unstrained_neighbor_list_potential(self._energy_fn, self._neighbors, self._box, self._stress, self._stresses)
         return jax_utils.jit_if_wanted(self._jit, displacement_fn, unstrained_potential)
 
 
@@ -102,8 +105,8 @@ class JmdLennardJonesNeighborList(Calculator):
         if not self._jit:
             raise RuntimeError("Warm-up only implemented for jit=True")
 
-        # TODO: Warm up should probably pre-compute neighbor list so that it is not re-computed later on
         self._compute_properties()
+        print("Warm-up finished")
 
     
     def __getstate__(self):
