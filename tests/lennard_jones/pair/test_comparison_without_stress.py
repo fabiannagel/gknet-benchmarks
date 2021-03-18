@@ -63,6 +63,12 @@ class ComparisonWithoutStress(unittest.TestCase):
     def test_energy_equality(self):
         total_energy = [r.energy for r in self._results]
         assert_arrays_all_close(total_energy, atol=1E-15)
+
+
+    def test_energy_conservation(self):
+        summed_energy = list(map(lambda r: np.sum(r.energies), self._results))
+        computed_energy = list(map(lambda r: r.energy, self._results))
+        assert_arrays_all_close([summed_energy, computed_energy], atol=1E-17)
     
     
     def test_energies_equality(self):

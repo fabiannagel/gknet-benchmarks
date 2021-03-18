@@ -60,6 +60,12 @@ class ComparisonWithStress(unittest.TestCase):
     def test_energy_equality(self):
         total_energy = [r.energy for r in self._results]
         assert_arrays_all_close(total_energy, atol=1E-15)
+
+
+    def test_energy_conservation(self):
+        summed_energy = list(map(lambda r: np.sum(r.energies), self._results))
+        computed_energy = list(map(lambda r: r.energy, self._results))
+        assert_arrays_all_close([summed_energy, computed_energy], atol=1E-17)
     
     
     def test_energies_equality(self):
@@ -76,6 +82,15 @@ class ComparisonWithStress(unittest.TestCase):
         results_with_stress = list(filter(lambda r: r.stress is not None, self._results))
         stress = [r.stress for r in results_with_stress]
         assert_arrays_all_close(stress, atol=1E-17)
+
+    
+    def test_stress_conservation(self):       
+        results_with_stresses = list(filter(lambda r: r.stresses is not None, self._results))        
+        summed_stress = list(map(lambda r: np.sum(r.stresses, axis=0), results_with_stresses))
+    
+        results_with_stress = list(filter(lambda r: r.stress is not None, self._results))
+        computed_stress = list(map(lambda r: r.stress, results_with_stress))
+        assert_arrays_all_close([summed_stress, computed_stress], atol=1E-17)
 
 
     def test_stresses_equality(self):
