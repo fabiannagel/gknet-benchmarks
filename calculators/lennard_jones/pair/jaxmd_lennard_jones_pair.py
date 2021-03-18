@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Callable, List, Optional, Tuple, Dict
 from functools import partial
 import warnings
+
 import jax_utils
 from jax_utils import XlaMemoryFlag
 from calculators.calculator import Calculator
@@ -57,17 +58,12 @@ class JmdLennardJonesPair(Calculator):
 
     @property
     def description(self) -> str:
-        return "JAX-MD Pair (stress={}, stresses={}, jit={})".format(self._stress, self._stresses, self._jit)
+        return jax_utils.get_calculator_description(self)
 
 
     @property
     def memory_allocation_mode(self) -> XlaMemoryFlag:
         return self._memory_allocation_mode
-
-
-    # @property
-    # def printable_memory_allocation_modes(self) -> List[str]:
-        # return jax_utils.get_printable_memory_allocation_modes(self._memory_allocation_mode)
 
 
     @property
@@ -170,6 +166,8 @@ class JmdLennardJonesPair(Calculator):
 
     
     def __getstate__(self):
+        print(self.__hash__)
+
         # Copy the object's state from self.__dict__ which contains
         # all our instance attributes. Always use the dict.copy()
         # method to avoid modifying the original state.
@@ -177,6 +175,9 @@ class JmdLennardJonesPair(Calculator):
         # Remove the unpicklable entries.
         del state['_displacement_fn']
         del state['_properties_fn']
+
+        # del state['from_ase_atoms']
+        # del state['create_potential']
         return state
 
 
@@ -188,3 +189,6 @@ class JmdLennardJonesPair(Calculator):
         error_fn = lambda *args, **kwargs: print("Pickled instance cannot compute new data")
         self._displacement_fn = error_fn
         self._properties_fn = error_fn
+
+        self.from_ase_atoms = error_fn
+        self.create_potential = error_fn

@@ -7,9 +7,9 @@ if TYPE_CHECKING:
     
 
 class Result():
-    calculator: Calculator
+    # calculator: Calculator
     n: int
-# 
+ 
     energy: float
     energies: np.ndarray
     forces: np.ndarray
@@ -18,7 +18,7 @@ class Result():
     computation_time: float
 
     def __init__(self, calculator: Calculator, n: int, energy: float, energies: np.ndarray, forces: np.ndarray, stress: np.ndarray, stresses: np.ndarray):
-        self.calculator = calculator
+        # self.calculator = calculator
         self.n = n
         self.energy = energy
         self.energies = energies

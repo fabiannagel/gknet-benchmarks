@@ -27,6 +27,7 @@ class JmdLennardJonesNeighborList(Calculator):
         self._stress = stress
         self._stresses = stresses
         self._jit = jit
+        self._memory_allocation_mode = jax_utils.get_memory_allocation_mode()
 
         # TODO: np.array causes strange indexing errors now and then. migrate everything to jnp.array!
         self._box = jnp.array(self._box)
@@ -55,12 +56,12 @@ class JmdLennardJonesNeighborList(Calculator):
 
     @property
     def description(self) -> str:
-        return "JAX-MD Neighbor List (stress={}, stresses={}, jit={})".format(self._stress, self._stresses, self._jit)
+        return jax_utils.get_calculator_description(self)
 
 
     @property
-    def memory_allocation_mode(self) -> Dict[XlaMemoryFlag, str]:
-        return self._memory_allocation_modes
+    def memory_allocation_mode(self) -> XlaMemoryFlag:
+        return self._memory_allocation_mode
 
 
     @property

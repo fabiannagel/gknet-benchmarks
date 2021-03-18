@@ -1,10 +1,10 @@
+from jax import vmap, random
+from calculators.calculator import Calculator
 from os import environ
 from enum import Enum
 import warnings
-from typing import Dict, List
 from jax_md import space
 import jax.numpy as jnp
-from jax import vmap, random
 from periodic_general import periodic_general as new_periodic_general
 from periodic_general import inverse as new_inverse
 from periodic_general import transform as new_transform
@@ -42,10 +42,10 @@ def set_memory_allocation_mode(flag: XlaMemoryFlag, value: str):
     environ[flag.value] = value
 
 
-def clear_memory_allocation_mode(flag: XlaMemoryFlag):
-    if not flag in XlaMemoryFlag:
-        raise ValueError("Passed flag is not a valid XLA memory allocation mode.")
-    del environ[flag.value]
+# def clear_memory_allocation_mode(flag: XlaMemoryFlag):
+    # if not flag in XlaMemoryFlag:
+        # raise ValueError("Passed flag is not a valid XLA memory allocation mode.")
+    # del environ[flag.value]
     
 
 def reset_memory_allocation_mode():
@@ -55,15 +55,11 @@ def reset_memory_allocation_mode():
             del environ[flag.value]
         except KeyError:
             continue
+    
 
-
-# def get_printable_memory_allocation_modes(modes: Dict[XlaMemoryFlag, str]) -> List[str]:
-    # printable = []
-    # for k in modes.keys():
-        # v = modes[k]
-        # printable.append("{}={}".format(k, v))
-    # return printable
-
+def get_calculator_description(calculator: Calculator) -> str:
+    return "JAX-MD Pair (stress={}, stresses={}, jit={}, memory allocation={})".format(calculator._stress, calculator._stresses, calculator._jit, calculator._memory_allocation_mode)
+    
 
 def compute_pairwise_distances(displacement_fn: space.DisplacementFn, R: jnp.ndarray):
     # displacement_fn takes two vectors Ra and Rb
