@@ -60,8 +60,12 @@ class JmdLennardJonesNeighborList(Calculator):
 
 
     @property
-    def description(self) -> str:
-        return "JAX-MD Neighbor List (stress={}, stresses={}, jit={}, memory allocation={})".format(self._stress, self._stresses, self._jit, self._memory_allocation_mode)
+    def description(self, include_memory_allocation=False) -> str:
+        base_description = "JAX-MD Neighbor List (stress={}, stresses={}, jit={}{})"
+        if include_memory_allocation:
+            memory_allocation = ", memory allocation={}".format(self._memory_allocation_mode)
+            return base_description.format(self._stress, self._stresses, self._jit, memory_allocation)
+        return base_description.format(self._stress, self._stresses, self._jit, "")
 
 
     @property
