@@ -148,10 +148,62 @@ def get_unstrained_pair_potential(box: jnp.ndarray, displacement_fn: Displacemen
         total_energy = total_energy_fn(R)
         atomwise_energies = energy_fn(R)
         forces = forces_fn(R)
-
-        return total_energy, atomwise_energies, forces, None, None
+        stress, stresses = None, None
+        return total_energy, atomwise_energies, forces, stress, stresses
 
     return unstrained_potential_fn
+
+
+def get_strained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray, compute_stress: bool, compute_stresses: bool) -> PotentialFn:
+
+    def strained_potential_fn(R: space.Array) -> PotentialProperties:
+        # 1) Set the box under strain using a symmetrized deformation tensor
+        # 2) Override the box in the energy function
+        # 3) Derive forces, stress and stresses as gradients of the deformed energy function
+        # define a default energy function, an infinitesimal deformation and a function to apply the transformation to the box
+        # energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff, r_onset=r_onset, per_particle=True)                     
+        deformation = jnp.zeros_like(box)
+
+        # a function to symmetrize the deformation tensor and apply it to the box
+        transform_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
+        
+        # atomwise and total energy functions that act on the transformed box. same for force, stress and stresses.
+        deformation_energy_fn = lambda deformation, R, *args, **kwargs: energy_fn(R, box=transform_box_fn(deformation), neighbor=neighbors)
+        total_energy_fn = lambda deformation, R, *args, **kwargs: jnp.sum(deformation_energy_fn(deformation, R))            
+        force_fn = lambda deformation, R, *args, **kwargs: grad(total_energy_fn, argnums=1)(deformation, R) * -1
+        
+        stress = None
+        if compute_stress:
+            stress_fn = lambda deformation, R, *args, **kwargs: grad(total_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(box)
+            stress = stress_fn(deformation, R, neighbor=neighbors)  
+        
+        stresses = None
+        if compute_stresses:
+            stresses_fn = lambda deformation, R, *args, **kwargs: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(box)
+            stresses = stresses_fn(deformation, R, neighbor=neighbors)
+        
+        total_energy = total_energy_fn(deformation, R, neighbor=neighbors)
+        atomwise_energies = deformation_energy_fn(deformation, R, neighbor=neighbors)
+        forces = force_fn(deformation, R, neighbor=neighbors)
+        
+        return total_energy, atomwise_energies, forces, stress, stresses
+
+    return strained_potential_fn
+
+
+def get_unstrained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray, compute_stress: bool, compute_stresses: bool) -> PotentialFn:
+
+    def unstrained_potential(R: space.Array) -> PotentialProperties:
+        total_energy_fn = lambda R, *args, **kwargs: jnp.sum(energy_fn(R, *args, **kwargs))
+        forces_fn = quantity.force(total_energy_fn)
+
+        total_energy = total_energy_fn(R, neighbor=neighbors)
+        atomwise_energies = energy_fn(R, neighbor=neighbors)
+        forces = forces_fn(R, neighbor=neighbors)
+        stress, stresses = None, None
+        return total_energy, atomwise_energies, forces, stress, stresses
+
+    return unstrained_potential
 
 
 # TODO: JaxCalculator

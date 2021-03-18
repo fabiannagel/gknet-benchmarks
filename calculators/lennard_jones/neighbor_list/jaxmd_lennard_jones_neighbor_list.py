@@ -1,17 +1,18 @@
 from __future__ import annotations
 from typing import Callable, Optional, Tuple, Dict
+import warnings
 from functools import partial
 import jax_utils
-from jax_utils import XlaMemoryFlag
+from jax_utils import PotentialFn, XlaMemoryFlag
 from calculators.calculator import Calculator
-from calculators.result import Result
+from calculators.result import JaxResult, Result
 
 from ase.atoms import Atoms
-from jax_md import space, energy, quantity
-from periodic_general import periodic_general, transform
+from jax_md import space, energy
+from jax_md.space import DisplacementFn
+from periodic_general import periodic_general
 import jax.numpy as jnp
-from jax import grad, jit
-from jax.api import jacfwd
+from jax import jit
 from jax.config import config
 config.update("jax_enable_x64", True)
 
@@ -29,15 +30,15 @@ class JmdLennardJonesNeighborList(Calculator):
         self._jit = jit
         self._memory_allocation_mode = jax_utils.get_memory_allocation_mode()
 
-        # TODO: np.array causes strange indexing errors now and then. migrate everything to jnp.array!
+        # np.array causes strange indexing errors with neighbor lists now and then
         self._box = jnp.array(self._box)
         self._R = jnp.array(self._R)
 
-        self._displacement_fn, self._properties_fn = self._initialize_potential(displacement_fn, stress)
+        self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
 
 
     @classmethod
-    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool) -> JmdLennardJonesPair:
+    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool) -> JmdLennardJonesNeighborList:
         displacement_fn = jax_utils.new_get_displacement(atoms)
         
         # JAX-MD's LJ implementation multiplies onset and cutoff by sigma. To be compatible w/ ASE's implementation, we need to perform these adjustments.
@@ -49,7 +50,7 @@ class JmdLennardJonesNeighborList(Calculator):
 
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool) -> JmdLennardJonesPair:
+    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool) -> JmdLennardJonesNeighborList:
         '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
         return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, None)
 
@@ -67,95 +68,34 @@ class JmdLennardJonesNeighborList(Calculator):
     @property
     @partial(jit, static_argnums=0)
     def pairwise_distances(self):
-        return jax_utils.compute_pairwise_distances(self._displacement_fn)
+        return jax_utils.compute_pairwise_distances(self._displacement_fn, self._R)
 
 
     def _generate_R(self, n: int, scaling_factor: float) -> jnp.ndarray:
         return jax_utils.generate_R(n, scaling_factor)
         
 
-    def _initialize_potential(self, displacement_fn: Optional[Callable], stress: bool) -> Tuple[space.Space, Callable[[space.Array]]]:
+    def _initialize_potential(self, displacement_fn: Optional[DisplacementFn]) -> Tuple[space.DisplacementFn, PotentialFn]:
         if displacement_fn is None:
+            warnings.warn("Using default periodic_general")
             displacement_fn, _ = periodic_general(self._box)
         
-        # using an np.array or a list from ASE will cause a strange indexing error
         neighbor_fn, energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, self._box, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)
-        
-        if self._jit:
-            displacement_fn = jit(displacement_fn)
-            energy_fn = jit(energy_fn)
 
-        nbrs = neighbor_fn(self._R)
-
-
-        def compute_properties_with_stress(deformation: jnp.ndarray, R: space.Array):   
-            # 1) Set the box under strain using a symmetrized deformation tensor
-            # 2) Override the box in the energy function
-            # 3) Derive forces, stress and stresses as gradients of the deformed energy function
-
-            symmetrized_strained_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, self._box)   
-            if self._jit: symmetrized_strained_box_fn = jit(symmetrized_strained_box_fn)
-
-            deformation_energy_fn = lambda deformation, R, *args, **kwargs: energy_fn(R, box=symmetrized_strained_box_fn(deformation), neighbor=nbrs)
-            if self._jit: deformation_energy_fn = jit(deformation_energy_fn)
-
-            total_deformation_energy_fn = lambda deformation, R, *args, **kwargs: jnp.sum(deformation_energy_fn(deformation, R, *args, **kwargs))
-            if self._jit: total_deformation_energy_fn = jit(total_deformation_energy_fn)
-            
-            # deformation_force_fn = lambda deformation, R: grad(total_deformation_energy_fn, argnums=1)(deformation, R) * -1
-            deformation_force_fn = quantity.force(total_deformation_energy_fn)
-            if self._jit: deformation_force_fn = jit(deformation_force_fn)
-
-
-            # TODO: Why so ugly?
-            stress = None
-            if self._stress:
-                stress_fn = lambda deformation, R, *args, **kwargs: grad(total_deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
-                if self._jit: stress_fn = jit(stress_fn)
-                stress = stress_fn(deformation, R, neighbor=nbrs)
- 
-            stresses = None
-            if self._stresses:            
-                stresses_fn = lambda deformation, R, *args, **kwargs: jacfwd(deformation_energy_fn, argnums=0)(deformation, R) / jnp.linalg.det(self._box)
-                if self._jit: stresses_fn = jit(stresses_fn)
-                stresses = stresses_fn(deformation, R, neighbor=nbrs)
- 
-
-            total_energy = total_deformation_energy_fn(deformation, R, neighbor=nbrs)
-            atomwise_energies = deformation_energy_fn(deformation, R, neighbor=nbrs)
-            forces = deformation_force_fn(deformation, R, neighbor=nbrs)
-
-            return total_energy, atomwise_energies, forces, stress, stresses
-
-
-        def compute_properties(R: space.Array) -> Tuple[jnp.ndarray, float, jnp.ndarray]:
-            total_energy_fn = lambda R, *args, **kwargs: jnp.sum(energy_fn(R, *args, **kwargs))
-            if self._jit: total_energy_fn = jit(total_energy_fn)
-
-            forces_fn = quantity.force(total_energy_fn)
-            if self._jit: forces_fn = jit(forces_fn)
-        
-            total_energy = total_energy_fn(R, neighbor=nbrs)
-            atomwise_energies = energy_fn(R, neighbor=nbrs)
-            forces = forces_fn(R, neighbor=nbrs)
-
-            return total_energy, atomwise_energies, forces
-
+        # TODO: Move to warmup?
+        neighbors = neighbor_fn(self._R)
 
         if self._stress or self._stresses:
-            return displacement_fn, compute_properties_with_stress
+            strained_potential = jax_utils.get_strained_neighbor_list_potential(energy_fn, neighbors, self._box, self._stress, self._stresses)
+            return jax_utils.jit_if_wanted(self._jit, displacement_fn, strained_potential)
         
-        return displacement_fn, compute_properties
+        unstrained_potential = jax_utils.get_unstrained_neighbor_list_potential(energy_fn, neighbors, self._box, self._stress, self._stresses)
+        return jax_utils.jit_if_wanted(self._jit, displacement_fn, unstrained_potential)
 
 
     def _compute_properties(self) -> Result:
-        if self._stress or self._stresses:
-            deformation = jnp.zeros_like(jnp.array(self._box))
-            total_energy, atomwise_energies, forces, stress, stresses = self._properties_fn(deformation, self._R)
-            return Result(self, self._n, total_energy, atomwise_energies, forces, stress, stresses)
-        
-        total_energy, atomwise_energies, forces = self._properties_fn(self._R)
-        return Result(self, self._n, total_energy, atomwise_energies, forces, None, None)
+        properties = self._potential_fn(self._R)
+        return JaxResult(self, self._n, *properties)
 
 
     def _perform_warm_up(self):
@@ -167,21 +107,7 @@ class JmdLennardJonesNeighborList(Calculator):
 
     
     def __getstate__(self):
-        # Copy the object's state from self.__dict__ which contains
-        # all our instance attributes. Always use the dict.copy()
-        # method to avoid modifying the original state.
-        state = self.__dict__.copy()
-        # Remove the unpicklable entries.
-        del state['_displacement_fn']
-        del state['_properties_fn']
-        return state
-
+        return jax_utils.get_state(self)
 
     def __setstate__(self, state):
-        # Restore instance attributes (i.e., filename and lineno).
-        self.__dict__.update(state)
-        # Restore the previously opened file's state. To do so, we need to
-        # reopen it and read from it until the line count is restored.
-        error_fn = lambda *args, **kwargs: print("Pickled instance cannot compute new data")
-        self._displacement_fn = error_fn
-        self._properties_fn = error_fn
+        jax_utils.set_state(self, state)

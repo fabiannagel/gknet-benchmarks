@@ -1,10 +1,10 @@
+from calculators.result import Result
 from ase.atoms import Atoms
 from calculators.calculator import Calculator
-from calculators.result import Result
 import unittest
 from unittest.case import skip
-from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
+from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 from ...utils import *
 
 class ComparisonWithStress(unittest.TestCase):
@@ -13,6 +13,8 @@ class ComparisonWithStress(unittest.TestCase):
     _n = 500
     _sigma = 2.0
     _epsilon = 1.5
+    _r_cutoff: float
+    _r_onset: float
 
 
     def __init__(self, methodName: str) -> None:
@@ -24,14 +26,14 @@ class ComparisonWithStress(unittest.TestCase):
         self._results.extend(ase.calculate())
         r_onset = ase.r_onset
         r_cutoff = ase.r_cutoff
-
-        jmd_stress = JmdLennardJonesPair.from_ase_atoms(ase._atoms, self._sigma, self._epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)
+        
+        jmd_stress = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, self._sigma, self._epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)
         self._results.extend(jmd_stress.calculate())
-        
-        jmd_stresses = JmdLennardJonesPair.from_ase_atoms(ase._atoms, self._sigma, self._epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)
+
+        jmd_stresses = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, self._sigma, self._epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)
         self._results.extend(jmd_stresses.calculate())
-        
-        jmd_stress_stresses = JmdLennardJonesPair.from_ase_atoms(ase._atoms, self._sigma, self._epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)
+
+        jmd_stress_stresses = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, self._sigma, self._epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)
         self._results.extend(jmd_stress_stresses.calculate())
 
         self._calculators = [ase, jmd_stress, jmd_stresses, jmd_stress_stresses]

@@ -2,7 +2,6 @@ from typing import List
 from ase.atoms import Atoms
 from calculators.calculator import Calculator
 import unittest
-from unittest.case import skip
 from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
 from ...utils import *
@@ -50,27 +49,27 @@ class ComparisonWithoutStress(unittest.TestCase):
         assert_arrays_all_equal(system_sizes)
 
 
-    # def test_atom_position_equality(self):
-        # atom_positions = [c.R for c in self._calculators]
-        # assert_arrays_all_equal(atom_positions)
+    def test_atom_position_equality(self):
+        atom_positions = [c.R for c in self._calculators]
+        assert_arrays_all_equal(atom_positions)
 
-    # 
-    # def test_pairwise_distances_equality(self):
-        # pairwise_distances = [c.pairwise_distances for c in self._calculators]
-        # assert_arrays_all_close(pairwise_distances)
-    # 
-    # 
-    # def test_energy_equality(self):
-        # total_energy = [r.energy for r in self._results]
-        # assert_arrays_all_close(total_energy, atol=1E-15)
-    # 
-    # 
-    # def test_energies_equality(self):
-        # total_energies = [r.energies for r in self._results]
-        # assert_arrays_all_close(total_energies, atol=1E-15)
-    # 
-    # 
-    # def test_forces_equality(self):
-        # forces = [r.forces for r in self._results]
-        # assert_arrays_all_close(forces, atol=1E-14)
-        # 
+    
+    def test_pairwise_distances_equality(self):
+        pairwise_distances = [c.pairwise_distances for c in self._calculators]
+        assert_arrays_all_close(pairwise_distances)
+    
+    
+    def test_energy_equality(self):
+        total_energy = [r.energy for r in self._results]
+        assert_arrays_all_close(total_energy, atol=1E-15)
+    
+    
+    def test_energies_equality(self):
+        total_energies = [r.energies for r in self._results]
+        assert_arrays_all_close(total_energies, atol=1E-15)
+    
+    
+    def test_forces_equality(self):
+        forces = [r.forces for r in self._results]
+        assert_arrays_all_close(forces, atol=1E-14)
+        
