@@ -202,6 +202,55 @@ def get_unstrained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarra
     return unstrained_potential
 
 
+def get_strained_gnn_potential(energy_fn, neighbors, params, box: jnp.ndarray, compute_stress: bool, compute_stresses: bool) -> PotentialFn:
+    
+    def strained_potential_fn(R: space.Array) -> PotentialProperties:
+        deformation = jnp.zeros_like(box)
+        transform_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
+
+        total_deformation_energy_fn = lambda params, R, deformation, neighbors: energy_fn(params, R, neighbors, box=transform_box_fn(deformation))
+        force_fn = lambda params, R, deformation, neighbors: grad(total_deformation_energy_fn, argnums=1)(params, R, deformation, neighbors) * -1
+
+        # TODO: atom-wise energies + stresses with GNN?
+        # fake atomwise energy function from which we can take the jacobian
+        atomwise_energy_fn = lambda params, R, deformation, neighbors: jnp.ones((R.shape[0],1)) / total_deformation_energy_fn(params, R, deformation, neighbors)
+
+        total_energy = total_deformation_energy_fn(params, R, deformation, neighbors)
+        atomwise_energies = atomwise_energy_fn(params, R, deformation, neighbors)
+        forces = force_fn(params, R, deformation, neighbors)
+
+        stress = None
+        if compute_stress:
+            stress_fn = lambda params, R, deformation, neighbors: grad(total_deformation_energy_fn, argnums=2)(params, R, deformation, neighbors) / jnp.linalg.det(box)
+            stress = stress_fn(params, R, deformation, neighbors)
+
+        stresses = None
+        if compute_stresses:
+            stresses_fn = lambda params, R, deformation, neighbors: jacfwd(atomwise_energy_fn, argnums=2)(params, R, deformation, neighbors) / jnp.linalg.det(box)
+            stresses = stresses_fn(params, R, deformation, neighbors) 
+
+        return total_energy, atomwise_energies, forces, stress, stresses
+
+    return strained_potential_fn
+
+
+def get_unstrained_gnn_potential(energy_fn, neighbors, params, box: jnp.ndarray, compute_stress: bool, compute_stresses: bool) -> PotentialFn:
+
+    def unstrained_potential_fn(R: space.Array) -> PotentialProperties:
+        total_energy = energy_fn(params, R, neighbors)
+
+        # TODO: atom-wise energies with GNN?
+        # fake atomwise energy function as in strained potential
+        atomwise_energy_fn = lambda params, R, neighbors: jnp.ones((R.shape[0],1)) / energy_fn(params, R, neighbors)  
+        atomwise_energies = atomwise_energy_fn(params, R, neighbors)
+
+        force_fn = lambda params, R, neighbors, *args, **kwargs: grad(energy_fn, argnums=1)(params, R, neighbors) * -1
+        forces = force_fn(params, R, neighbors)
+
+        return total_energy, atomwise_energies, forces, None, None
+
+    return unstrained_potential_fn    
+
 # TODO: JaxCalculator
 def get_state(calculator: Calculator) -> Dict:
     # Copy the object's state from self.__dict__ which contains
@@ -217,14 +266,6 @@ def get_state(calculator: Calculator) -> Dict:
     if '_energy_fn' in state: del state['_energy_fn']
     if '_neighbor_fn' in state: del state['_neighbor_fn']
     if '_neighbors' in state: del state['_neighbors']
-
-    #try:
-    #    del state['_energy_fn']
-    #    del state['_neighbor_fn']
-    #    del state['_neighbors']
-    #except KeyError:
-    #    pass
-
     return state
 
 

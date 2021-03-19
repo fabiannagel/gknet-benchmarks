@@ -7,23 +7,12 @@ from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJo
 from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 
 
-def sanity_check_effective_system_sizes(effective_system_sizes: List[int]):
-    unique_systems_count = len(set(effective_system_sizes))
-    
-    if unique_systems_count != len(system_sizes):
-        print("Something went wrong")
-        print("Requested: {} (length {})".format(system_sizes, len(system_sizes)))
-        print("Simulated: {} (length {})".format(effective_system_sizes, unique_systems_count))
-
-
-
-
 def run_benchmark_loop(system_sizes: List[int]) -> List[Result]:
     results: List[Result] = []
     computed_system_sizes = []
 
     for n in system_sizes:
-        print("\n\nSystem size n = {}\n".format(n))
+        print("\nSystem size n = {}\n".format(n))
 
         # ASE - initialize bulk structure & run
         ase = AseLennardJonesPair.create_potential(n, sigma, epsilon, r_cutoff=None, r_onset=None)
@@ -77,10 +66,10 @@ def run_benchmark_loop(system_sizes: List[int]) -> List[Result]:
 
 sigma = 2.0
 epsilon = 1.5
-runs = 10
+runs = 100
 
 # system_sizes = generate_unit_cells(z_max=8, unit_cell_size=4)
-system_sizes = generate_system_sizes(start=100, stop=200, step=10)
+system_sizes = generate_system_sizes(start=100, stop=2000, step=100)
 xla_flag = jax_utils.get_memory_allocation_mode()
 
 print("Benchmarking system sizes: {}".format(system_sizes))
@@ -88,4 +77,4 @@ print("Performing {} run(s) per framework and system size".format(runs))
 print("Memory allocation mode: {}".format(xla_flag))
 
 results = run_benchmark_loop(system_sizes)
-persist_results(results, runs, descriptor="vibes")
+persist_results(results, runs)
