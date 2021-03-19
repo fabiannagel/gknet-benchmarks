@@ -94,19 +94,14 @@ class BapstGNN(Calculator):
             key = random.PRNGKey(0)
             self._params = self._init_fn(key, self._R, self._neighbors)
         
-
-        def strained_potential(R: space.Array):
-            energy = self._energy_fn(self._params, self._R, self._neighbors)
-
-            # grad_fn = grad(train_energy_fn, argnums=1)
-            # force_fn = lambda params, R, **kwargs: -grad_fn(params, R)
-            # forces = force_fn(self._params, self._R)
-            print(energy)
-            return energy, energy, energy, None, None
-
         # predicted = vmap(train_energy_fn, (None, 0))(params, example_positions)
 
-        potential = jax_utils.get_strained_gnn_potential(self._energy_fn, self._neighbors, self._params, self._box, self._stress, self._stresses)
+        potential: PotentialFn
+        if self._stress or self._stresses:
+            potential = jax_utils.get_strained_gnn_potential(self._energy_fn, self._neighbors, self._params, self._box, self._stress, self._stresses)
+            return jax_utils.jit_if_wanted(self._jit, displacement_fn, potential)
+
+        potential = jax_utils.get_unstrained_gnn_potential(self._energy_fn, self._neighbors, self._params)
         return jax_utils.jit_if_wanted(self._jit, displacement_fn, potential)                   
 
 

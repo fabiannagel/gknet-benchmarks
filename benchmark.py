@@ -1,3 +1,4 @@
+from calculators.GNN.bapst_gnn import BapstGNN
 from typing import List
 from utils import *
 import jax_utils
@@ -21,55 +22,61 @@ def run_benchmark_loop(system_sizes: List[int]) -> List[Result]:
             continue
 
         computed_system_sizes.append(ase.n)
-        ase.warm_up()
-        results.extend(ase.calculate(runs))
+        # ase.warm_up()
+        # results.extend(ase.calculate(runs))
 
 
-        # JAX-MD: stress=True, stresses=True, jit=True
-        jmd1 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
-        jmd1.warm_up() 
-        results.extend(jmd1.calculate(runs))
+       # # JAX-MD: stress=True, stresses=True, jit=True
+       # jmd1 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
+       # jmd1.warm_up() 
+       # results.extend(jmd1.calculate(runs))
 
-        # JAX-MD: stress=True, stresses=False, jit=True
-        jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
-        jmd2.warm_up() 
-        results.extend(jmd2.calculate(runs))
+       # # JAX-MD: stress=True, stresses=False, jit=True
+       # jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
+       # jmd2.warm_up() 
+       # results.extend(jmd2.calculate(runs))
  
-        # JAX-MD: stress=False, stresses=False, jit=True
-        jmd3 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
-        jmd3.warm_up() 
-        results.extend(jmd3.calculate(runs))
+       # # JAX-MD: stress=False, stresses=False, jit=True
+       # jmd3 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
+       # jmd3.warm_up() 
+       # results.extend(jmd3.calculate(runs))
 
 
-        # JAX-MD: stress=False, stresses=False, jit=False
-        # jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
-        # results.extend(jmd_nojit.calculate(runs))
+       # # JAX-MD: stress=False, stresses=False, jit=False
+       # jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
+       # results.extend(jmd_nojit.calculate(runs))
 
 
-        # JAX-MD Neighbor List:     stress=True, stresses=True, jit=True
-        jmd_nl1 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
-        jmd_nl1.warm_up()    
-        results.extend(jmd_nl1.calculate(runs))
+       # # JAX-MD Neighbor List:     stress=True, stresses=True, jit=True
+       # jmd_nl1 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
+       # jmd_nl1.warm_up()    
+       # results.extend(jmd_nl1.calculate(runs))
 
-        # JAX-MD Neighbor List:     stress=True, stresses=False, jit=True
-        jmd_nl2 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
-        jmd_nl2.warm_up()    
-        results.extend(jmd_nl2.calculate(runs))
+       # # JAX-MD Neighbor List:     stress=True, stresses=False, jit=True
+       # jmd_nl2 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
+       # jmd_nl2.warm_up()    
+       # results.extend(jmd_nl2.calculate(runs))
 
-        # JAX-MD Neighbor List:     stress=False, stresses=False, jit=True
-        jmd_nl3 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
-        jmd_nl3.warm_up()    
-        results.extend(jmd_nl3.calculate(runs))
+       # # JAX-MD Neighbor List:     stress=False, stresses=False, jit=True
+       # jmd_nl3 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
+       # jmd_nl3.warm_up()    
+       # results.extend(jmd_nl3.calculate(runs))
+
+
+        # GNN by Bapst et al. 2020
+        gnn = BapstGNN.from_ase_atoms(ase._atoms, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)
+        gnn.warm_up()
+        results.extend(gnn.calculate(runs))
 
     return results
 
 
 sigma = 2.0
 epsilon = 1.5
-runs = 100
+runs = 2
 
 # system_sizes = generate_unit_cells(z_max=8, unit_cell_size=4)
-system_sizes = generate_system_sizes(start=100, stop=2000, step=100)
+system_sizes = generate_system_sizes(start=100, stop=500, step=100)
 xla_flag = jax_utils.get_memory_allocation_mode()
 
 print("Benchmarking system sizes: {}".format(system_sizes))

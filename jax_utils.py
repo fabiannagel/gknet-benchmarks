@@ -234,7 +234,7 @@ def get_strained_gnn_potential(energy_fn, neighbors, params, box: jnp.ndarray, c
     return strained_potential_fn
 
 
-def get_unstrained_gnn_potential(energy_fn, neighbors, params, box: jnp.ndarray, compute_stress: bool, compute_stresses: bool) -> PotentialFn:
+def get_unstrained_gnn_potential(energy_fn, neighbors, params) -> PotentialFn:
 
     def unstrained_potential_fn(R: space.Array) -> PotentialProperties:
         total_energy = energy_fn(params, R, neighbors)
@@ -266,6 +266,9 @@ def get_state(calculator: Calculator) -> Dict:
     if '_energy_fn' in state: del state['_energy_fn']
     if '_neighbor_fn' in state: del state['_neighbor_fn']
     if '_neighbors' in state: del state['_neighbors']
+    
+    # GNN calculator
+    if '_init_fn' in state: del state['_init_fn']
     return state
 
 
@@ -282,3 +285,4 @@ def set_state(calculator: Calculator, state: Dict):
     calculator._energy_fn = error_fn
     calculator._neighbor_fn = error_fn
     calculator._neighbors = error_fn
+    calculator._init_fn = error_fn
