@@ -13,6 +13,7 @@ from jax_md.energy import NeighborFn, NeighborList
 from jax_md.space import DisplacementFn
 from jax_md.nn import InitFn
 from periodic_general import periodic_general
+import time
 import jax.numpy as jnp
 from jax import jit, random
 from jax.config import config
@@ -46,8 +47,10 @@ class BapstGNN(Calculator):
         self._R = jnp.array(self._R)
         
         if not skip_initialization:
-            self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
-
+            elapsed_seconds, return_val = self._time_execution(self._initialize_potential(displacement_fn))
+            self._initialization_time = elapsed_seconds
+            self._displacement_fn, self._potential_fn = return_val
+            # self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
 
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool) -> BapstGNN:
