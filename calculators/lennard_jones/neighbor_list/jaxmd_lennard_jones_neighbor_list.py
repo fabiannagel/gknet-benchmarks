@@ -25,7 +25,7 @@ class JmdLennardJonesNeighborList(Calculator):
     _neighbor_fn: NeighborFn = None
     _neighbors: NeighborList = None
 
-    def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable]):
+    def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable], skip_initialization=False):
         super().__init__(box, n, R, stress)
         self._sigma = sigma
         self._epsilon = epsilon
@@ -40,7 +40,9 @@ class JmdLennardJonesNeighborList(Calculator):
         self._box = jnp.array(self._box)
         self._R = jnp.array(self._R)
 
-        self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
+        # for OOM benchmarks to still obtain a data-only instance when OOM occurs in _initialize_potential()
+        if not skip_initialization:
+            self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
 
 
     @classmethod
@@ -56,9 +58,9 @@ class JmdLennardJonesNeighborList(Calculator):
 
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool) -> JmdLennardJonesNeighborList:
+    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, skip_initialization=False) -> JmdLennardJonesNeighborList:
         '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
-        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, None)
+        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, None, skip_initialization)
 
 
     @property

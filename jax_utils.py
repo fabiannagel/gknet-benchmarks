@@ -258,9 +258,9 @@ def get_state(calculator: Calculator) -> Dict:
     # method to avoid modifying the original state.
     state = calculator.__dict__.copy()
     # Remove the unpicklable entries.
-    del state['_displacement_fn']
-    del state['_potential_fn']
-    del state['_R']
+    if '_displacement_fn' in state: del state['_displacement_fn']
+    if '_potential_fn' in state: del state['_potential_fn']
+    if '_R' in state: del state['_R']
 
     # neighbor list calculator
     if '_energy_fn' in state: del state['_energy_fn']
