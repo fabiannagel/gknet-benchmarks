@@ -63,10 +63,10 @@ def run_benchmark_loop(system_sizes: List[int]) -> List[Result]:
        # results.extend(jmd_nl3.calculate(runs))
 
 
-        # GNN by Bapst et al. 2020
-        gnn = BapstGNN.from_ase_atoms(ase._atoms, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)
-        gnn.warm_up()
-        results.extend(gnn.calculate(runs))
+        #  GNN by Bapst et al. 2020
+        # gnn = BapstGNN.from_ase_atoms(ase._atoms, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)
+        # gnn.warm_up()
+        # results.extend(gnn.calculate(runs))
 
     return results
 

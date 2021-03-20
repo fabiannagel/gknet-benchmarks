@@ -1,3 +1,4 @@
+from calculators.calculator import Calculator
 import os
 from typing import Callable, Iterable, List
 from calculators.result import Result
@@ -60,6 +61,12 @@ def load_results_from_pickle(file_path: str) -> List[Result]:
     with open(file_path, 'rb') as handle:
         results = pickle.load(handle)
     return results
+
+
+def load_calculators_from_pickle(file_path: str) -> List[Calculator]:
+    with open(file_path, 'rb') as handle:
+        calculators = pickle.load(handle)
+    return calculators
 
 
 def plot_runtimes(results: List[Result], 

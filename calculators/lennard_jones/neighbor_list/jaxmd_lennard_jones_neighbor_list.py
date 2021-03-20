@@ -19,6 +19,8 @@ config.update("jax_enable_x64", True)
 
 
 class JmdLennardJonesNeighborList(Calculator):
+    _short_description = "JAX-MD Neighbor List"
+    
     _energy_fn: Callable[[space.Array, NeighborList], space.Array] = None
     _neighbor_fn: NeighborFn = None
     _neighbors: NeighborList = None
@@ -61,11 +63,17 @@ class JmdLennardJonesNeighborList(Calculator):
 
     @property
     def description(self, include_memory_allocation=False) -> str:
-        base_description = "JAX-MD Neighbor List (stress={}, stresses={}, jit={}{})"
+        base_description = self._short_description + " (stress={}, stresses={}, jit={}{})"
+        # base_description = "JAX-MD Neighbor List (stress={}, stresses={}, jit={}{})"
         if include_memory_allocation:
             memory_allocation = ", memory allocation={}".format(self._memory_allocation_mode)
             return base_description.format(self._stress, self._stresses, self._jit, memory_allocation)
         return base_description.format(self._stress, self._stresses, self._jit, "")
+
+
+    @property
+    def short_description(self) -> str:
+        return self._short_description
 
 
     @property

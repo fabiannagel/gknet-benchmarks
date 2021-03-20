@@ -18,6 +18,7 @@ config.update("jax_enable_x64", True)
 config.update("jax_log_compiles", 1)
 
 class JmdLennardJonesPair(Calculator):
+    _short_description = "JAX-MD Pair"
 
     # TODO: box_size and displacement_fn are two different ways to initialize
     # Either we can create our own displacement_fn via space.periodic(box_size) ...
@@ -58,12 +59,16 @@ class JmdLennardJonesPair(Calculator):
 
     @property
     def description(self, include_memory_allocation=False) -> str:
-        base_description = "JAX-MD Pair (stress={}, stresses={}, jit={}{})"
+        base_description = self._short_description + " (stress={}, stresses={}, jit={}{})"
+        # base_description = "JAX-MD Pair (stress={}, stresses={}, jit={}{})"
         if include_memory_allocation:
             memory_allocation = ", memory allocation={}".format(self._memory_allocation_mode)
             return base_description.format(self._stress, self._stresses, self._jit, memory_allocation)
         return base_description.format(self._stress, self._stresses, self._jit, "")
 
+    @property
+    def short_description(self) -> str:
+        return self._short_description
 
     @property
     def memory_allocation_mode(self) -> XlaMemoryFlag:

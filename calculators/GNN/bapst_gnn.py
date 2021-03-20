@@ -20,6 +20,8 @@ config.update("jax_enable_x64", True)
 config.update("jax_log_compiles", 1)
 
 class BapstGNN(Calculator):
+    _short_description = "Bapst GNN"
+    
     _energy_fn: Callable[[space.Array, NeighborList], space.Array] = None
     _init_fn: InitFn = None
     _neighbor_fn: NeighborFn = None
@@ -60,11 +62,17 @@ class BapstGNN(Calculator):
 
     @property
     def description(self, include_memory_allocation=False) -> str:
-        base_description = "Bapst et al. 2020 (GNN) (stress={}, stresses={}, jit={}{})"
+        base_description = self._short_description + " (stress={}, stresses={}, jit={}{})"
+        # base_description = "Bapst et al. 2020 (GNN) (stress={}, stresses={}, jit={}{})"
         if include_memory_allocation:
             memory_allocation = ", memory allocation={}".format(self._memory_allocation_mode)
             return base_description.format(self._stress, self._stresses, self._jit, memory_allocation)
         return base_description.format(self._stress, self._stresses, self._jit, "")
+
+
+    @property
+    def short_description(self) -> str:
+        return self._short_description
 
 
     @property

@@ -30,8 +30,8 @@ class Calculator(ABC):
     @classmethod
     def create_potential(cls, box_size: float, n: int, R: Optional[np.ndarray], *args) -> cls:
         # TODO: Decide if generating our own distances here is a valid use case. Don't we always initialize via ASE in the end?
-        # if R is None or len(R) == 0:
-        #     R = cls._generate_R(cls, n, box_size)
+        if R is None or len(R) == 0:
+            R = cls._generate_R(cls, n, box_size)
         box = box_size * np.eye(3)
         return cls(box, n, R, *args)
 

@@ -238,15 +238,15 @@ def get_unstrained_gnn_potential(energy_fn, neighbors, params) -> PotentialFn:
 
     def unstrained_potential_fn(R: space.Array) -> PotentialProperties:
         total_energy = energy_fn(params, R, neighbors)
-
+        
         # TODO: atom-wise energies with GNN?
         # fake atomwise energy function as in strained potential
         atomwise_energy_fn = lambda params, R, neighbors: jnp.ones((R.shape[0],1)) / energy_fn(params, R, neighbors)  
         atomwise_energies = atomwise_energy_fn(params, R, neighbors)
-
+        
         force_fn = lambda params, R, neighbors, *args, **kwargs: grad(energy_fn, argnums=1)(params, R, neighbors) * -1
         forces = force_fn(params, R, neighbors)
-
+        
         return total_energy, atomwise_energies, forces, None, None
 
     return unstrained_potential_fn    
