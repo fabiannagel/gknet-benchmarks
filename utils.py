@@ -180,3 +180,27 @@ def plot_runtime_variances(results: List[Result], ):
         # fig.set_ylabel("Runtime")
 
     
+def plot_oom_behavior(labels: List[str], all_properties: List[Calculator], only_stress: List[Calculator], only_stresses: List[Calculator], only_energies_and_forces: List[Calculator], only_energies_and_forces_no_jit: List[Calculator], figsize=(10, 5)):
+    bar_width = 0.1
+    
+    # label locations
+    r1 = np.arange(len(all_properties))
+    r2 = [x + bar_width for x in r1]
+    r3 = [x + bar_width for x in r2]
+    r4 = [x + bar_width for x in r3]
+    r5 = [x + bar_width for x in r4]
+
+    plt.figure(figsize=figsize)
+    plt.bar(r1, all_properties, width=bar_width, label='All properties')
+    plt.bar(r2, only_stress, width=bar_width, label='Only stress')
+    plt.bar(r3, only_stresses, width=bar_width, label='Only stresses')
+    plt.bar(r4, only_energies_and_forces, width=bar_width, label='Only energies and forces')
+    plt.bar(r5, only_energies_and_forces_no_jit, width=bar_width, label='Only energies and forces, no jit')
+
+    plt.title("Maximum number of atoms before going out-of-memory, per calculator")
+    plt.xlabel('Calculator implementations', fontweight='bold')
+    plt.xticks([r + bar_width for r in range(len(all_properties))], labels)
+    plt.ylabel('Maximum atom count', fontweight='bold')
+    plt.legend()
+    plt.show()
+    # plt.savefig()
