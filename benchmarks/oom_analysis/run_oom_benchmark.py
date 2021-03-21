@@ -100,7 +100,7 @@ epsilon = 1.5
 r_cutoff = 2
 r_onset = 1.5
 
-system_sizes = generate_system_sizes(start=4000, stop=20000, step=6000)
+system_sizes = generate_system_sizes(start=5000, stop=25000, step=100)
 oom_calculators: List[Calculator] = []
 run_until_oom(system_sizes)
 
