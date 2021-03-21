@@ -78,9 +78,9 @@ class Calculator(ABC):
         pass    
 
 
-    def _time_execution(self, callable: Callable):
+    def _time_execution(self, callable: Callable, *args, **kwargs):
         start = time.monotonic()
-        return_val = callable()
+        return_val = callable(*args, **kwargs)
         elapsed_seconds = time.monotonic() - start   
         return elapsed_seconds, return_val
 

@@ -42,7 +42,7 @@ class JmdLennardJonesNeighborList(Calculator):
 
         # for OOM benchmarks to still obtain a data-only instance when OOM occurs in _initialize_potential()
         if not skip_initialization:
-            elapsed_seconds, return_val = self._time_execution(self._initialize_potential(displacement_fn))
+            elapsed_seconds, return_val = self._time_execution(self._initialize_potential, displacement_fn)
             self._initialization_time = elapsed_seconds
             self._displacement_fn, self._potential_fn = return_val
             # self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
