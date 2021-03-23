@@ -34,10 +34,9 @@ class BapstGNN(Calculator):
     # Unite in new parameter box_size_or_displacement? What is the proper way to do this?
 
     # TODO: Create lightweight type for LJ parameters?
-    def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable], skip_initialization=False):
+    def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, r_cutoff: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable], skip_initialization=False):
         super().__init__(box, n, R, stress)
         self._r_cutoff = r_cutoff
-        self._r_onset = r_onset 
         self._stress = stress
         self._stresses = stresses
         self._jit = jit
@@ -53,15 +52,15 @@ class BapstGNN(Calculator):
             # self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
 
     @classmethod
-    def from_ase_atoms(cls, atoms: Atoms, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool) -> BapstGNN:
+    def from_ase_atoms(cls, atoms: Atoms, r_cutoff: float, stress: bool, stresses: bool, jit: bool, skip_initialization=False) -> BapstGNN:
         displacement_fn = jax_utils.new_get_displacement(atoms)
-        return super().from_ase_atoms(atoms, r_cutoff, r_onset, stress, stresses, jit, displacement_fn)
+        return super().from_ase_atoms(atoms, r_cutoff, stress, stresses, jit, displacement_fn, skip_initialization)
 
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, skip_initialization=False) -> BapstGNN:
+    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], r_cutoff: float, stress: bool, stresses: bool, jit: bool, skip_initialization=False) -> BapstGNN:
         '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
-        return super().create_potential(box_size, n, R_scaled, r_cutoff, r_onset, stress, stresses, jit, None, skip_initialization)
+        return super().create_potential(box_size, n, R_scaled, r_cutoff, stress, stresses, jit, None, skip_initialization)
 
 
     @property

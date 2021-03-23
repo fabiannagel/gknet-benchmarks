@@ -15,7 +15,7 @@ import jax.numpy as jnp
 from jax import jit
 from jax.config import config
 config.update("jax_enable_x64", True)
-config.update("jax_log_compiles", 1)
+config.update("jax_log_compiles", 0)
 
 class JmdLennardJonesPair(Calculator):
     _short_description = "JAX-MD Pair"

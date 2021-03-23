@@ -1,3 +1,4 @@
+from vibes.helpers.supercell import make_cubic_supercell
 from calculators.calculator import Calculator
 import os
 from typing import Callable, Iterable, List
@@ -6,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 from itertools import groupby
+from ase.build import bulk
+
 
 
 def generate_unit_cells(z_max: int, unit_cell_size):
@@ -18,6 +21,17 @@ def generate_unit_cells(z_max: int, unit_cell_size):
 
 def generate_system_sizes(start: int, stop: int, step=100) -> List[int]:
     return list(range(start, stop+step, step))
+
+
+def generate_cubic_system_sizes(start: int, stop: int, step=100) -> List[int]:
+    system_sizes = []
+
+    for n in range(start, stop+step, step):
+        atoms = bulk("Ar", cubic=True)
+        atoms, _ = make_cubic_supercell(atoms, target_size=n)
+        system_sizes.append(len(atoms))
+
+    return sorted(set(system_sizes))
 
 
 def create_output_path(runs: int) -> str:
@@ -180,7 +194,7 @@ def plot_runtime_variances(results: List[Result], ):
         # fig.set_ylabel("Runtime")
 
     
-def plot_oom_behavior(labels: List[str], all_properties: List[Calculator], only_stress: List[Calculator], only_stresses: List[Calculator], only_energies_and_forces: List[Calculator], only_energies_and_forces_no_jit: List[Calculator], figsize=(10, 5)):
+def plot_oom_behavior(labels: List[str], system_sizes: List[int], all_properties: List[Calculator], only_stress: List[Calculator], only_stresses: List[Calculator], only_energies_and_forces: List[Calculator], only_energies_and_forces_no_jit: List[Calculator], figsize=(10, 5)):
     bar_width = 0.1
     
     # label locations
@@ -201,6 +215,7 @@ def plot_oom_behavior(labels: List[str], all_properties: List[Calculator], only_
     plt.xlabel('Calculator implementations', fontweight='bold')
     plt.xticks([r + bar_width for r in range(len(all_properties))], labels)
     plt.ylabel('Maximum atom count', fontweight='bold')
+    plt.yticks(system_sizes)
     plt.legend()
     plt.show()
     # plt.savefig()
