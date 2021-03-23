@@ -14,70 +14,70 @@ from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list i
 
 def run_jaxmd_pair(ase: AseLennardJonesPair, results: List[Result]):
     # JAX-MD Pair: all properties                       (stress=True, stresses=True, jit=True)
-    jmd1 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
+    jmd1 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
     jmd1.warm_up() 
     results.extend(jmd1.calculate(runs))
     
     # JAX-MD Pair: only stress                          (stress=True, stresses=False, jit=True)
-    jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
+    jmd2 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
     jmd2.warm_up() 
     results.extend(jmd2.calculate(runs))
     
     # JAX-MD Pair: only stresses                        (stress=False, stresses=True, jit=True)
-    jmd3 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)    
+    jmd3 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)    
     jmd3.warm_up() 
     results.extend(jmd3.calculate(runs))
 
     # JAX-MD Pair: only energies and forces             (stress=False, stresses=False, jit=True)
-    jmd4 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
+    jmd4 = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
     jmd4.warm_up() 
     results.extend(jmd4.calculate(runs))
     
     # JAX-MD Pair: only energies and forces, no jit     (stress=False, stresses=False, jit=False)
-    jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
+    jmd_nojit = JmdLennardJonesPair.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
     results.extend(jmd_nojit.calculate(runs))
 
 
 def run_jaxmd_neighbor_list(ase: AseLennardJonesPair, results: List[Result]):
     # JAX-MD Neighbor List: all properties              (stress=True, stresses=True, jit=True)
-    jmd_nl1 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
+    jmd_nl1 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
     jmd_nl1.warm_up()    
     results.extend(jmd_nl1.calculate(runs))
     
     # JAX-MD Neighbor List: only stress                 (stress=True, stresses=False, jit=True)
-    jmd_nl2 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
+    jmd_nl2 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
     jmd_nl2.warm_up()    
     results.extend(jmd_nl2.calculate(runs))
 
     # JAX-MD Neighbor List: only stresses               (stress=False, stresses=True, jit=True)
-    jmd_nl3 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)    
+    jmd_nl3 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)    
     jmd_nl3.warm_up()    
     results.extend(jmd_nl3.calculate(runs))
     
     # JAX-MD Neighbor List: only energies and forces    (stress=False, stresses=False, jit=True)
-    jmd_nl4 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
+    jmd_nl4 = JmdLennardJonesNeighborList.from_ase_atoms(ase._atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
     jmd_nl4.warm_up()    
     results.extend(jmd_nl4.calculate(runs))
 
 
 def run_jaxmd_gnn(ase: AseLennardJonesPair, results: List[Result]):
     # JAX-MD GNN: all properties                       (stress=True, stresses=True, jit=True
-    gnn1 = BapstGNN.from_ase_atoms(ase._atoms, ase.r_cutoff, ase.r_onset, stress=True, stresses=True, jit=True)
+    gnn1 = BapstGNN.from_ase_atoms(ase._atoms, r_cutoff, r_onset, stress=True, stresses=True, jit=True)
     gnn1.warm_up()
     results.extend(gnn1.calculate(runs))
     
     # JAX-MD GNN: only stress                           (stress=True, stresses=False, jit=True)
-    gnn2 = BapstGNN.from_ase_atoms(ase._atoms, ase.r_cutoff, ase.r_onset, stress=True, stresses=False, jit=True)
+    gnn2 = BapstGNN.from_ase_atoms(ase._atoms, r_cutoff, r_onset, stress=True, stresses=False, jit=True)
     gnn2.warm_up()
     results.extend(gnn2.calculate(runs))
 
     # JAX-MD GNN: only stresses                         (stress=False, stresses=True, jit=True)
-    gnn3 = BapstGNN.from_ase_atoms(ase._atoms, ase.r_cutoff, ase.r_onset, stress=False, stresses=True, jit=True)
+    gnn3 = BapstGNN.from_ase_atoms(ase._atoms, r_cutoff, r_onset, stress=False, stresses=True, jit=True)
     gnn3.warm_up()
     results.extend(gnn3.calculate(runs))
 
     # JAX-MD GNN: only energies and forces              (stress=False, stresses=False, jit=True)
-    gnn4 = BapstGNN.from_ase_atoms(ase._atoms, ase.r_cutoff, ase.r_onset, stress=False, stresses=False, jit=True)
+    gnn4 = BapstGNN.from_ase_atoms(ase._atoms, r_cutoff, r_onset, stress=False, stresses=False, jit=True)
     gnn4.warm_up()
     results.extend(gnn4.calculate(runs))
 
