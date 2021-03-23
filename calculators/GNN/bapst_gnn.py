@@ -21,7 +21,7 @@ config.update("jax_enable_x64", True)
 config.update("jax_log_compiles", 1)
 
 class BapstGNN(Calculator):
-    _short_description = "Bapst GNN"
+    _short_description = "GNN Neighbor List"
     
     _energy_fn: Callable[[space.Array, NeighborList], space.Array] = None
     _init_fn: InitFn = None

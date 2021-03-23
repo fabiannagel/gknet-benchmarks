@@ -98,8 +98,6 @@ def initialize_with_ase(n: int, computed_system_sizes: List[int]):
     
 
 def run_until_oom() -> List[Result]:
-    # computed_system_sizes = []
-    
     for n in requested_system_sizes:
         ase = initialize_with_ase(n, computed_system_sizes)
         if ase is None: continue
@@ -116,9 +114,9 @@ epsilon = 10.42
 r_cutoff = 10.54
 r_onset = 8
 
-n_min = 5000
+n_min = 3000
 n_max = 25000
-n_step = 2000
+n_step = 100
 
 requested_system_sizes = generate_system_sizes(start=n_min, stop=n_max, step=n_step)
 computed_system_sizes = []

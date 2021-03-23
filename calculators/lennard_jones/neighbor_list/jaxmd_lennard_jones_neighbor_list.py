@@ -49,7 +49,7 @@ class JmdLennardJonesNeighborList(Calculator):
 
 
     @classmethod
-    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool) -> JmdLennardJonesNeighborList:
+    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool, skip_initialization=False) -> JmdLennardJonesNeighborList:
         displacement_fn = jax_utils.new_get_displacement(atoms)
         
         # JAX-MD's LJ implementation multiplies onset and cutoff by sigma. To be compatible w/ ASE's implementation, we need to perform these adjustments.
@@ -57,7 +57,7 @@ class JmdLennardJonesNeighborList(Calculator):
             r_onset /= sigma
             r_cutoff /= sigma
 
-        return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, displacement_fn)
+        return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, displacement_fn, skip_initialization)
 
 
     @classmethod
