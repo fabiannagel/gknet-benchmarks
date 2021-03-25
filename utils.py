@@ -8,7 +8,7 @@ import numpy as np
 import pickle
 from itertools import groupby
 from ase.build import bulk
-
+from ase.atoms import Atoms
 
 
 def generate_unit_cells(z_max: int, unit_cell_size):
@@ -81,6 +81,12 @@ def load_calculators_from_pickle(file_path: str) -> List[Calculator]:
     with open(file_path, 'rb') as handle:
         calculators = pickle.load(handle)
     return calculators
+
+
+def load_super_cells_from_pickle(file_path: str) -> List[Atoms]:
+    with open(file_path, 'rb') as handle:
+        super_cells = pickle.load(handle)
+    return super_cells
 
 
 def plot_runtimes(results: List[Result], 
