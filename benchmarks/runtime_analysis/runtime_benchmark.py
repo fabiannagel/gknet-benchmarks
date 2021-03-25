@@ -113,7 +113,6 @@ def run_jaxmd_neighbor_list(atoms: Atoms, results: List[Result]):
     # JAX-MD Neighbor List: only energies and forces, no jit    (stress=False, stresses=False, jit=False)
     if n < n_max_jaxmd_nl[False, False, False]:
         jmd_nl5 = JmdLennardJonesNeighborList.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
-        jmd_nl5.warm_up()    
         results.extend(jmd_nl5.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD Neighbor List, skipping.".format(n, n_max_jaxmd_nl[False, False, False]))
@@ -161,7 +160,6 @@ def run_jaxmd_gnn(atoms: Atoms, results: List[Result]):
     # JAX-MD GNN: only energies and forces, no jit              (stress=False, stresses=False, jit=False)
     if n < n_max_jaxmd_gnn[False, False, False]:
         gnn5 = BapstGNN.from_ase_atoms(atoms, r_cutoff, stress=False, stresses=False, jit=False)
-        gnn5.warm_up()
         results.extend(gnn5.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD GNN, skipping.".format(n, n_max_jaxmd_gnn[False, False, False]))
