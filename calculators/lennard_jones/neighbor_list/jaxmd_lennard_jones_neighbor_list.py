@@ -120,7 +120,7 @@ class JmdLennardJonesNeighborList(Calculator):
 
     def _perform_warm_up(self):
         if not self._jit:
-            raise RuntimeError("Warm-up only implemented for jit=True")
+            raise NotImplementedError("Warm-up only implemented for jit=True")
 
         self._compute_properties()
         print("Warm-up finished")
