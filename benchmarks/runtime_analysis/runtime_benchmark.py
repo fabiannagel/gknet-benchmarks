@@ -35,7 +35,11 @@ def run_and_initialize_expect_oom(callable: Callable, results: List[Result], *ar
 
     except (NotImplementedError, RuntimeError) as e:
         if type(e) == RuntimeError:
-            print("{} went oom at n={}".format(calculator, calculator.n))
+            if calculator is not None:
+                print("{} went oom at n={}".format(calculator, calculator.n))
+                return
+            
+            print("OOM during calculator initialization")
             return
 
     try:
