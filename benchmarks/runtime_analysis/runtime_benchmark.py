@@ -12,6 +12,19 @@ from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJo
 from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 from calculators.GNN.bapst_gnn import BapstGNN
 
+def run_expect_oom(calculator: Calculator, results: List[Result]):
+    try:
+        calculator.warm_up()
+    except (NotImplementedError, RuntimeError) as e:
+        if type(e) == RuntimeError:
+            print("{} went oom at n={}".format(calculator, calculator.n))
+            return        
+            
+    try:
+        results.extend(calculator.calculate(runs))
+    except RuntimeError:
+        print("{} went oom at n={}".format(calculator, calculator.n))
+
 
 def run_ase(atoms: Atoms, results: List[Result]):
     n = len(atoms)
@@ -30,8 +43,9 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: all properties                       (stress=True, stresses=True, jit=True)
     if n < n_max_jaxmd_pair[True, True, True]:
         jmd1 = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
-        jmd1.warm_up() 
-        results.extend(jmd1.calculate(runs))
+        run_expect_oom(jmd1, results)
+        # jmd1.warm_up() 
+        # results.extend(jmd1.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[True, True, True]))
 
@@ -39,8 +53,9 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: only stress                          (stress=True, stresses=False, jit=True)
     if n < n_max_jaxmd_pair[True, False, True]:
         jmd2 = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
-        jmd2.warm_up() 
-        results.extend(jmd2.calculate(runs))
+        # jmd2.warm_up() 
+        # results.extend(jmd2.calculate(runs))
+        run_expect_oom(jmd2, results)
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[True, False, True]))
 
@@ -48,8 +63,9 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: only stresses                        (stress=False, stresses=True, jit=True)
     if n < n_max_jaxmd_pair[False, True, True]:
         jmd3 = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)    
-        jmd3.warm_up() 
-        results.extend(jmd3.calculate(runs))
+        # jmd3.warm_up() 
+        # results.extend(jmd3.calculate(runs))
+        run_expect_oom(jmd3, results)
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[False, True, True]))
 
@@ -57,8 +73,9 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: only energies and forces             (stress=False, stresses=False, jit=True)
     if n < n_max_jaxmd_pair[False, False, True]:
         jmd4 = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
-        jmd4.warm_up() 
-        results.extend(jmd4.calculate(runs))
+        # jmd4.warm_up() 
+        # results.extend(jmd4.calculate(runs))
+        run_expect_oom(jmd4, results)
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[False, False, True]))
 
@@ -66,7 +83,8 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: only energies and forces, no jit     (stress=False, stresses=False, jit=False)
     if n < n_max_jaxmd_pair[False, False, False]:
         jmd_nojit = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
-        results.extend(jmd_nojit.calculate(runs))
+        # results.extend(jmd_nojit.calculate(runs))
+        run_expect_oom(jmd_nojit, results)
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[False, False, False]))
 
@@ -172,10 +190,10 @@ def run_benchmark_loop(super_cells: List[Atoms]) -> List[Result]:
         n = len(atoms)
         print("\nSystem size n = {}\n".format(n))
 
-        run_ase(atoms, results)
+        # run_ase(atoms, results)
         run_jaxmd_pair(atoms, results)
-        run_jaxmd_neighbor_list(atoms, results)
-        run_jaxmd_gnn(atoms, results)
+        # run_jaxmd_neighbor_list(atoms, results)
+        # run_jaxmd_gnn(atoms, results)
 
     return results
  
