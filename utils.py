@@ -110,9 +110,9 @@ def plot_runtimes(results: List[Result],
         results_per_calculator = list(results_per_calculator)    
         
         computed_system_sizes = get_system_sizes(results_per_calculator)
-        if computed_system_sizes != system_sizes:
-            oom_n = system_sizes[len(computed_system_sizes)]
-            print("calc went OOM at {}/{} super cells (n={})".format(len(computed_system_sizes), len(system_sizes), oom_n))
+        # if computed_system_sizes != system_sizes:
+            # oom_n = system_sizes[len(computed_system_sizes)]
+            # print("calc went OOM at {}/{} super cells (n={})".format(len(computed_system_sizes), len(system_sizes), oom_n))
 
         computation_times = []
         standard_deviations = []
@@ -135,7 +135,6 @@ def plot_runtimes(results: List[Result],
                 ax.scatter(current_system_sizes, mergeable_computation_times)
         
         ax.plot(computed_system_sizes, computation_times, label=results_per_calculator[0].calculator.description)
-        # ax.plot(system_sizes, computation_times, label=results_per_calculator[0].calculator.description)
         # plt.errorbar(system_sizes, computation_times, yerr=np.array(computation_times)*10, uplims=True, lolims=True, label='uplims=True, lolims=True')
 
         if shade_by == 'minmax':
@@ -154,11 +153,12 @@ def plot_runtimes(results: List[Result],
         title = "{}\nAverages of {} runs. {} shading.".format(plot_title, runs[0], shade_by)
         ax.set_title(title)
 
-    ax.set_xlabel("Number of atoms")
+    ax.set_xlabel("Number of atoms", fontsize=18)
     ax.set_xticks(system_sizes)
     ax.set_xticklabels(get_xticklabels(system_sizes))
 
-    ax.set_ylabel("Computation time [s]")
+    # TODO: Font sizes
+    ax.set_ylabel("Computation time [s]", fontsize=18)
     ax.set_yscale("log")
     ax.legend()
     
@@ -169,7 +169,6 @@ def plot_runtimes(results: List[Result],
 def get_xticklabels(system_sizes: List[int]) -> List[str]:
     def remove_tick_label(label: str, all_labels: List[str], reduction: int):
         idx = all_labels.index(label)
-        print(idx)
         if idx % reduction == 0:
             return label
         return ''
