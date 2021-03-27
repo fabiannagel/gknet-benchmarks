@@ -36,7 +36,11 @@ class JmdLennardJonesPair(Calculator):
         self._stresses = stresses
         self._jit = jit
         self._memory_allocation_mode = jax_utils.get_memory_allocation_mode()
-        self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
+
+        elapsed_seconds, return_val = self._time_execution(self._initialize_potential, displacement_fn)
+        self._initialization_time = elapsed_seconds
+        self._displacement_fn, self._potential_fn = return_val
+        # self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
 
 
     @classmethod
