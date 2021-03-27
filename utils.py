@@ -1,7 +1,7 @@
 from vibes.helpers.supercell import make_cubic_supercell
 from calculators.calculator import Calculator
 import os
-from typing import Callable, Iterable, List
+from typing import Callable, Iterable, List, Set
 from calculators.result import Result
 import matplotlib.pyplot as plt
 import numpy as np
@@ -89,19 +89,31 @@ def load_super_cells_from_pickle(file_path: str) -> List[Atoms]:
     return super_cells
 
 
+def computed_all_super_cells(results: List[Result], super_cells: Set[int]):
+    pass
+
+
+
 def plot_runtimes(results: List[Result], 
                   plot_title: str = None,
                   plot_file_name: str = None, 
                   shade_by: str = None,
-                  scatter = False):
-    
+                  scatter = False,
+                  figsize=(20, 10)):
+
     runs = []
     system_sizes = get_system_sizes(results)
-    fig, ax = plt.subplots(figsize=(20, 10))
+    fig, ax = plt.subplots(figsize=figsize)
 
     for key, results_per_calculator in group_by(results, lambda r: r.calculator.description):
+        # for example: all results of jaxmd pair for all system sizes, 100 runs each
         results_per_calculator = list(results_per_calculator)    
         
+        computed_system_sizes = get_system_sizes(results_per_calculator)
+        if computed_system_sizes != system_sizes:
+            oom_n = system_sizes[len(computed_system_sizes)]
+            print("calc went OOM at {}/{} super cells (n={})".format(len(computed_system_sizes), len(system_sizes), oom_n))
+
         computation_times = []
         standard_deviations = []
         mins = []
@@ -122,26 +134,30 @@ def plot_runtimes(results: List[Result],
                 current_system_sizes = [r.n for r in mergeable_results]
                 ax.scatter(current_system_sizes, mergeable_computation_times)
         
-        
-        ax.plot(system_sizes, computation_times, label=results_per_calculator[0].calculator.description)
+        ax.plot(computed_system_sizes, computation_times, label=results_per_calculator[0].calculator.description)
+        # ax.plot(system_sizes, computation_times, label=results_per_calculator[0].calculator.description)
         # plt.errorbar(system_sizes, computation_times, yerr=np.array(computation_times)*10, uplims=True, lolims=True, label='uplims=True, lolims=True')
 
         if shade_by == 'minmax':
-            ax.fill_between(system_sizes, mins, maxs, alpha=0.2)
+            ax.fill_between(computed_system_sizes, mins, maxs, alpha=0.2)
 
         elif shade_by == 'std':
             y_start = np.array(computation_times) - np.array(standard_deviations)
             y_end = np.array(computation_times) + np.array(standard_deviations)
-            ax.fill_between(system_sizes, y_start, y_end, alpha=0.2)
+            ax.fill_between(computed_system_sizes, y_start, y_end, alpha=0.2)
     
         
     if len(set(runs)) > 1:
         raise RuntimeError("Inconsistent number of runs in results")
         
-    title = "{}\nAverages of {} runs. {} shading.".format(plot_title, runs[0], shade_by)
-    ax.set_title(title)
+    if plot_title:
+        title = "{}\nAverages of {} runs. {} shading.".format(plot_title, runs[0], shade_by)
+        ax.set_title(title)
+
     ax.set_xlabel("Number of atoms")
     ax.set_xticks(system_sizes)
+    ax.set_xticklabels(get_xticklabels(system_sizes))
+
     ax.set_ylabel("Computation time [s]")
     ax.set_yscale("log")
     ax.legend()
@@ -149,6 +165,19 @@ def plot_runtimes(results: List[Result],
     if plot_file_name:
         fig.savefig(plot_file_name)
 
+
+def get_xticklabels(system_sizes: List[int]) -> List[str]:
+    def remove_tick_label(label: str, all_labels: List[str], reduction: int):
+        idx = all_labels.index(label)
+        print(idx)
+        if idx % reduction == 0:
+            return label
+        return ''
+
+    upper_ticks = list(filter(lambda n: n >= 3600, system_sizes))                           # this is where everything is fine
+    lower_ticks = list(filter(lambda n: n < 3600, system_sizes))                            # this is where more super cells occur -> overplotting
+    lower_ticks = list(map(lambda n: remove_tick_label(n, lower_ticks, 3), lower_ticks))    # skip every 3rd label
+    return lower_ticks + upper_ticks
 
 
 def get_calculator_description(results: List[Result]):
