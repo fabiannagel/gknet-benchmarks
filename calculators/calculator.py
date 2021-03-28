@@ -12,6 +12,7 @@ import itertools
 
 class Calculator(ABC):
     _warmup_time: float = None
+    _oom_runs: List[int] = []
 
     def __init__(self, box: np.ndarray, n: int, R: np.ndarray, computes_stress: bool) -> None:
         self._box = box
@@ -105,9 +106,14 @@ class Calculator(ABC):
 
     def calculate(self, runs=1) -> List[Result]:
         results = []
-        for _ in itertools.repeat(None, runs):       
-            elapsed_seconds, r = self._time_execution(self._compute_properties)
-            r.computation_time = elapsed_seconds
-            results.append(r)
+        # for _ in itertools.repeat(None, runs):
+        for i in range(runs):
+
+            try:       
+                elapsed_seconds, r = self._time_execution(self._compute_properties)
+                r.computation_time = elapsed_seconds
+                results.append(r)
+            except RuntimeError as e:
+                self._oom_runs.append(i + 1)
     
         return results
