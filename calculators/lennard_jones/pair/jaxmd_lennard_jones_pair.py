@@ -26,7 +26,7 @@ class JmdLennardJonesPair(Calculator):
     # Unite in new parameter box_size_or_displacement? What is the proper way to do this?
 
     # TODO: Create lightweight type for LJ parameters?
-    def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable]):
+    def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable], skip_initialization=False):
         super().__init__(box, n, R, stress)
         self._sigma = sigma
         self._epsilon = epsilon
@@ -37,14 +37,15 @@ class JmdLennardJonesPair(Calculator):
         self._jit = jit
         self._memory_allocation_mode = jax_utils.get_memory_allocation_mode()
 
-        elapsed_seconds, return_val = self._time_execution(self._initialize_potential, displacement_fn)
-        self._initialization_time = elapsed_seconds
-        self._displacement_fn, self._potential_fn = return_val
-        # self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
+        if not skip_initialization:
+            elapsed_seconds, return_val = self._time_execution(self._initialize_potential, displacement_fn)
+            self._initialization_time = elapsed_seconds
+            self._displacement_fn, self._potential_fn = return_val
+            # self._displacement_fn, self._potential_fn = self._initialize_potential(displacement_fn)
 
 
     @classmethod
-    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool) -> JmdLennardJonesPair:
+    def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool, skip_initialization=False) -> JmdLennardJonesPair:
         displacement_fn = jax_utils.new_get_displacement(atoms)
         
         # JAX-MD's LJ implementation multiplies onset and cutoff by sigma. To be compatible w/ ASE's implementation, we need to perform these adjustments.
@@ -52,13 +53,13 @@ class JmdLennardJonesPair(Calculator):
             r_onset /= sigma
             r_cutoff /= sigma
 
-        return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, displacement_fn)
+        return super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, displacement_fn, skip_initialization)
 
 
     @classmethod
-    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool) -> JmdLennardJonesPair:
+    def create_potential(cls, box_size: float, n: int, R_scaled: Optional[jnp.ndarray], sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, skip_initialization=False) -> JmdLennardJonesPair:
         '''Initialize a Lennard-Jones potential from scratch using scaled atomic coordinates. If omitted, random coordinates will be generated.'''
-        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, None)
+        return super().create_potential(box_size, n, R_scaled, sigma, epsilon, r_cutoff, r_onset, stress, stresses, jit, None, skip_initialization)
 
 
     @property

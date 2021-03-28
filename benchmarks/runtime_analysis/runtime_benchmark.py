@@ -13,8 +13,10 @@ from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list i
 from calculators.GNN.bapst_gnn import BapstGNN
 
 
-def save_oom_event(reason: str, callable: Callable, *args, **kwargs):
-    calc = callable(*args, **kwargs, skip_initialization=True)
+def save_oom_event(reason: str, callable: Callable, calc: Calculator, *args, **kwargs):
+    if calc is None:
+        calc = callable(*args, **kwargs, skip_initialization=True)  # if OOM during init, create a fake calc object for reference
+    
     event = calc, reason
     oom_events.append(event)
 
@@ -24,28 +26,25 @@ def run_and_initialize_expect_oom(callable: Callable, results: List[Result], *ar
 
     try:
         calculator = callable(*args, **kwargs)
-        calculator.warm_up()
-
-    except (NotImplementedError, RuntimeError) as e:
-        if type(e) == NotImplementedError:
-            pass    # calling warm-up for calculators that do not implement it will cause this
-
-        if calculator is None:
-            save_oom_event("Initialization", callable, *args, **kwargs)
-            print("OOM during calculator initialization")
-            return
-
-        # oom during warm-up
-        save_oom_event("Warm-up", callable, *args, **kwargs)
-        print("{} went oom at n={}".format(calculator, calculator.n))
+    except RuntimeError:
+        save_oom_event("Initialization", callable, None, *args, **kwargs)
+        print("OOM during calculator initialization")
         return
-            
+
+    try:
+        calculator.warm_up()
+    except NotImplementedError:
+        pass                    # fine for some calculators.
+    except RuntimeError:        # oom during warm-up
+        save_oom_event("Warm-up", callable, None, *args, **kwargs)
+        print("{} went oom at n={}".format(calculator, calculator.n))
+        return    
+     
     rs = calculator.calculate(runs)
-    if calculator._oom_runs > 0:
-        save_oom_event("Skipped run", callable, *args, **kwargs)
+    if len(calculator._oom_runs) > 0:
+        save_oom_event("Skipped run", None, calculator, *args, **kwargs)
 
     results.extend(rs)
-
 
 
 def run_ase(atoms: Atoms, results: List[Result]):
@@ -182,8 +181,8 @@ def run_benchmark_loop(super_cells: List[Atoms]) -> List[Result]:
 
         # run_ase(atoms, results)
         run_jaxmd_pair(atoms, results)
-        run_jaxmd_neighbor_list(atoms, results)
-        run_jaxmd_gnn(atoms, results)
+        # run_jaxmd_neighbor_list(atoms, results)
+        # run_jaxmd_gnn(atoms, results)
 
     return results  
  
