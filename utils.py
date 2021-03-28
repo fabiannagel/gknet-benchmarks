@@ -1,7 +1,7 @@
 from vibes.helpers.supercell import make_cubic_supercell
 from calculators.calculator import Calculator
 import os
-from typing import Callable, Iterable, List, Set
+from typing import Callable, Iterable, List, Set, Tuple
 from calculators.result import Result
 import matplotlib.pyplot as plt
 import numpy as np
@@ -58,6 +58,11 @@ def persist_results(results: List[Result], runs: int, descriptor=''):
 
     with open(output_path, 'wb') as handle:
         pickle.dump(results, handle)
+
+
+def persist_oom_events(events: List[Tuple[Calculator, str]], file_name: str):
+    with open(file_name, 'wb') as handle:
+        pickle.dump(events, handle)
 
 
 def group_by(iterable: Iterable, key: Callable):
@@ -153,12 +158,12 @@ def plot_runtimes(results: List[Result],
         title = "{}\nAverages of {} runs. {} shading.".format(plot_title, runs[0], shade_by)
         ax.set_title(title)
 
-    ax.set_xlabel("Number of atoms", fontsize=18)
+    ax.set_xlabel("Number of atoms", fontsize=18, fontweight='bold')
     ax.set_xticks(system_sizes)
     ax.set_xticklabels(get_xticklabels(system_sizes))
 
     # TODO: Font sizes
-    ax.set_ylabel("Computation time [s]", fontsize=18)
+    ax.set_ylabel("Computation time [s]", fontsize=18, fontweight='bold')
     ax.set_yscale("log")
     ax.legend()
     
@@ -245,7 +250,7 @@ def plot_oom_behavior(labels: List[str], system_sizes: List[int], all_properties
     plt.bar(r4, only_energies_and_forces, width=bar_width, label='Only energies and forces')
     plt.bar(r5, only_energies_and_forces_no_jit, width=bar_width, label='Only energies and forces, no jit')
 
-    plt.title("Maximum number of atoms before going out-of-memory, per calculator")
+    # plt.title("Maximum number of atoms before going out-of-memory, per calculator")
     plt.xlabel('Calculator implementations', fontweight='bold')
     plt.xticks([r + bar_width for r in range(len(all_properties))], labels)
     plt.ylabel('Maximum atom count', fontweight='bold')
@@ -253,3 +258,21 @@ def plot_oom_behavior(labels: List[str], system_sizes: List[int], all_properties
     plt.legend()
     plt.show()
     # plt.savefig()
+
+
+def print_oom_behavior_runtime_vs_dedicated(system_sizes: List[int], runtime_results: List[Result], oom_calculators: List[Calculator]):
+    '''OOM behavior seems different in runtime benchmarks and the dedicated OOM benchmark. This method plots the last successfully computed system size per calculator for both the runtime and dedicated OOM benchmark.'''
+    for key, results_per_calculator in group_by(runtime_results, lambda r: r.calculator.description):
+        results_per_calculator = list(results_per_calculator)    
+        description = results_per_calculator[0].calculator.description
+        n_oom_runtime = max([r.n for r in results_per_calculator])
+        
+        # print(description)
+        if not "ASE" in description:
+            # the first system where OOM occurred
+            n_oom_dedicated = list(filter(lambda c: c.description == description, oom_calculators))[0].n
+            # obtain the last successful system
+            n_oom_dedicated = system_sizes[system_sizes.index(n_oom_dedicated) - 1]
+            
+            # print("{:<70} went runtime OOM at n={}, dedicated OOM at n={}".format(description, n_oom_runtime, n_oom_dedicated))
+            print("{:<70} OOM at n={},{} (runtime, dedicated)".format(description, n_oom_runtime, n_oom_dedicated))

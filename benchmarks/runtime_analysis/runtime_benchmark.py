@@ -12,18 +12,11 @@ from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJo
 from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 from calculators.GNN.bapst_gnn import BapstGNN
 
-# def run_expect_oom(calculator: Calculator, results: List[Result]):
-#     try:
-#         calculator.warm_up()
-#     except (NotImplementedError, RuntimeError) as e:
-#         if type(e) == RuntimeError:
-#             print("{} went oom at n={}".format(calculator, calculator.n))
-#             return        
-#             
-#     try:
-#         results.extend(calculator.calculate(runs))
-#     except RuntimeError:
-#         print("{} went oom at n={}".format(calculator, calculator.n))
+
+def save_oom_event(reason: str, callable: Callable, *args, **kwargs):
+    calc = callable(*args, **kwargs, skip_initialization=True)
+    event = calc, reason
+    oom_events.append(event)
 
 
 def run_and_initialize_expect_oom(callable: Callable, results: List[Result], *args, **kwargs):
@@ -34,19 +27,24 @@ def run_and_initialize_expect_oom(callable: Callable, results: List[Result], *ar
         calculator.warm_up()
 
     except (NotImplementedError, RuntimeError) as e:
-        if type(e) == RuntimeError:
-            if calculator is not None:
-                print("{} went oom at n={}".format(calculator, calculator.n))
-                return
-            
+        if type(e) == NotImplementedError:
+            pass    # calling warm-up for calculators that do not implement it will cause this
+
+        if calculator is None:
+            save_oom_event("Initialization", callable, *args, **kwargs)
             print("OOM during calculator initialization")
             return
 
-    try:
-        results.extend(calculator.calculate(runs))
-    except RuntimeError:
+        # oom during warm-up
+        save_oom_event("Warm-up", callable, *args, **kwargs)
         print("{} went oom at n={}".format(calculator, calculator.n))
+        return
+            
+    rs = calculator.calculate(runs)
+    if calculator._oom_runs > 0:
+        save_oom_event("Skipped run", callable, *args, **kwargs)
 
+    results.extend(rs)
 
 
 
@@ -67,10 +65,6 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: all properties                       (stress=True, stresses=True, jit=True)
     if n < n_max_jaxmd_pair[True, True, True]:
         run_and_initialize_expect_oom(JmdLennardJonesPair.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)
-        # jmd1 = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
-        # run_expect_oom(jmd1, results)
-        # jmd1.warm_up() 
-        # results.extend(jmd1.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[True, True, True]))
 
@@ -78,10 +72,6 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: only stress                          (stress=True, stresses=False, jit=True)
     if n < n_max_jaxmd_pair[True, False, True]:
         run_and_initialize_expect_oom(JmdLennardJonesPair.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)
-        # jmd2 = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
-        # jmd2.warm_up() 
-        # results.extend(jmd2.calculate(runs))
-        # run_expect_oom(jmd2, results)
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[True, False, True]))
 
@@ -89,10 +79,6 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: only stresses                        (stress=False, stresses=True, jit=True)
     if n < n_max_jaxmd_pair[False, True, True]:
         run_and_initialize_expect_oom(JmdLennardJonesPair.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)
-        # jmd3 = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)    
-        # jmd3.warm_up() 
-        # results.extend(jmd3.calculate(runs))
-        # run_expect_oom(jmd3, results)
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[False, True, True]))
 
@@ -100,10 +86,6 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: only energies and forces             (stress=False, stresses=False, jit=True)
     if n < n_max_jaxmd_pair[False, False, True]:
         run_and_initialize_expect_oom(JmdLennardJonesPair.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)
-        # jmd4 = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
-        # jmd4.warm_up() 
-        # results.extend(jmd4.calculate(runs))
-        # run_expect_oom(jmd4, results)
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[False, False, True]))
 
@@ -111,9 +93,6 @@ def run_jaxmd_pair(atoms: Atoms, results: List[Result]):
     # JAX-MD Pair: only energies and forces, no jit     (stress=False, stresses=False, jit=False)
     if n < n_max_jaxmd_pair[False, False, False]:
         run_and_initialize_expect_oom(JmdLennardJonesPair.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)
-        # jmd_nojit = JmdLennardJonesPair.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
-        # results.extend(jmd_nojit.calculate(runs))
-        # run_expect_oom(jmd_nojit, results)
     else:
         print("n={} exceeding n_max={} for JAX-MD Pair, skipping.".format(n, n_max_jaxmd_pair[False, False, False]))
 
@@ -124,10 +103,6 @@ def run_jaxmd_neighbor_list(atoms: Atoms, results: List[Result]):
     # JAX-MD Neighbor List: all properties              (stress=True, stresses=True, jit=True)
     if n < n_max_jaxmd_nl[True, True, True]:
         run_and_initialize_expect_oom(JmdLennardJonesNeighborList.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)
-        # jmd_nl1 = JmdLennardJonesNeighborList.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=True, adjust_radii=True, jit=True)    
-        # run_expect_oom(jmd_nl1, results)
-        # jmd_nl1.warm_up()    
-        # results.extend(jmd_nl1.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD Neighbor List, skipping.".format(n, n_max_jaxmd_nl[True, True, True]))
 
@@ -135,10 +110,6 @@ def run_jaxmd_neighbor_list(atoms: Atoms, results: List[Result]):
     # JAX-MD Neighbor List: only stress                 (stress=True, stresses=False, jit=True)
     if n < n_max_jaxmd_nl[True, False, True]:
         run_and_initialize_expect_oom(JmdLennardJonesNeighborList.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)
-        # jmd_nl2 = JmdLennardJonesNeighborList.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=True, stresses=False, adjust_radii=True, jit=True)    
-        # run_expect_oom(jmd_nl2, results)
-        # jmd_nl2.warm_up()    
-        # results.extend(jmd_nl2.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD Neighbor List, skipping.".format(n, n_max_jaxmd_nl[True, False, True]))
 
@@ -146,10 +117,6 @@ def run_jaxmd_neighbor_list(atoms: Atoms, results: List[Result]):
     # JAX-MD Neighbor List: only stresses               (stress=False, stresses=True, jit=True)
     if n < n_max_jaxmd_nl[False, True, True]:
         run_and_initialize_expect_oom(JmdLennardJonesNeighborList.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)
-        # jmd_nl3 = JmdLennardJonesNeighborList.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=True, adjust_radii=True, jit=True)    
-        # run_expect_oom(jmd_nl3, results)
-        # jmd_nl3.warm_up()    
-        # results.extend(jmd_nl3.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD Neighbor List, skipping.".format(n, n_max_jaxmd_nl[False, True, True]))
 
@@ -157,10 +124,6 @@ def run_jaxmd_neighbor_list(atoms: Atoms, results: List[Result]):
     # JAX-MD Neighbor List: only energies and forces    (stress=False, stresses=False, jit=True)
     if n < n_max_jaxmd_nl[False, False, True]:
         run_and_initialize_expect_oom(JmdLennardJonesNeighborList.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)
-        # jmd_nl4 = JmdLennardJonesNeighborList.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)    
-        # run_expect_oom(jmd_nl4, results)
-        # jmd_nl4.warm_up()    
-        # results.extend(jmd_nl4.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD Neighbor List, skipping.".format(n, n_max_jaxmd_nl[False, False, True]))
 
@@ -168,9 +131,6 @@ def run_jaxmd_neighbor_list(atoms: Atoms, results: List[Result]):
     # JAX-MD Neighbor List: only energies and forces, no jit    (stress=False, stresses=False, jit=False)
     if n < n_max_jaxmd_nl[False, False, False]:
         run_and_initialize_expect_oom(JmdLennardJonesNeighborList.from_ase_atoms, results, atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)
-        # jmd_nl5 = JmdLennardJonesNeighborList.from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)    
-        # run_expect_oom(jmd_nl5, results)
-        # results.extend(jmd_nl5.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD Neighbor List, skipping.".format(n, n_max_jaxmd_nl[False, False, False]))
 
@@ -181,10 +141,6 @@ def run_jaxmd_gnn(atoms: Atoms, results: List[Result]):
     # JAX-MD GNN: all properties                       (stress=True, stresses=True, jit=True
     if n < n_max_jaxmd_gnn[True, True, True]:
         run_and_initialize_expect_oom(BapstGNN.from_ase_atoms, results, atoms, r_cutoff, stress=True, stresses=True, jit=True)
-        # gnn1 = BapstGNN.from_ase_atoms(atoms, r_cutoff, stress=True, stresses=True, jit=True)
-        # run_expect_oom(gnn1, results)
-        # gnn1.warm_up()
-        # results.extend(gnn1.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD GNN, skipping.".format(n, n_max_jaxmd_gnn[True, True, True]))
 
@@ -192,10 +148,6 @@ def run_jaxmd_gnn(atoms: Atoms, results: List[Result]):
     # JAX-MD GNN: only stress                           (stress=True, stresses=False, jit=True)
     if n < n_max_jaxmd_gnn[True, False, True]:
         run_and_initialize_expect_oom(BapstGNN.from_ase_atoms, results, atoms, r_cutoff, stress=True, stresses=False, jit=True)
-        # gnn2 = BapstGNN.from_ase_atoms(atoms, r_cutoff, stress=True, stresses=False, jit=True)
-        # run_expect_oom(gnn2, results)
-        # gnn2.warm_up()
-        # results.extend(gnn2.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD GNN, skipping.".format(n, n_max_jaxmd_gnn[True, False, True]))
 
@@ -203,10 +155,6 @@ def run_jaxmd_gnn(atoms: Atoms, results: List[Result]):
     # JAX-MD GNN: only stresses                         (stress=False, stresses=True, jit=True)
     if n < n_max_jaxmd_gnn[False, True, True]:
         run_and_initialize_expect_oom(BapstGNN.from_ase_atoms, results, atoms, r_cutoff, stress=False, stresses=True, jit=True)
-        # gnn3 = BapstGNN.from_ase_atoms(atoms, r_cutoff, stress=False, stresses=True, jit=True)
-        # run_expect_oom(gnn3, results)
-        # gnn3.warm_up()
-        # results.extend(gnn3.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD GNN, skipping.".format(n, n_max_jaxmd_gnn[False, True, True]))
 
@@ -214,10 +162,6 @@ def run_jaxmd_gnn(atoms: Atoms, results: List[Result]):
     # JAX-MD GNN: only energies and forces              (stress=False, stresses=False, jit=True)
     if n < n_max_jaxmd_gnn[False, False, True]:
         run_and_initialize_expect_oom(BapstGNN.from_ase_atoms, results, atoms, r_cutoff, stress=False, stresses=False, jit=True)
-        # gnn4 = BapstGNN.from_ase_atoms(atoms, r_cutoff, stress=False, stresses=False, jit=True)
-        # run_expect_oom(gnn4, results)
-        # gnn4.warm_up()
-        # results.extend(gnn4.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD GNN, skipping.".format(n, n_max_jaxmd_gnn[False, False, True]))
 
@@ -225,9 +169,6 @@ def run_jaxmd_gnn(atoms: Atoms, results: List[Result]):
     # JAX-MD GNN: only energies and forces, no jit              (stress=False, stresses=False, jit=False)
     if n < n_max_jaxmd_gnn[False, False, False]:
         run_and_initialize_expect_oom(BapstGNN.from_ase_atoms, results, atoms, r_cutoff, stress=False, stresses=False, jit=False)
-        # gnn5 = BapstGNN.from_ase_atoms(atoms, r_cutoff, stress=False, stresses=False, jit=False)
-        # run_expect_oom(gnn5, results)
-        # results.extend(gnn5.calculate(runs))
     else:
         print("n={} exceeding n_max={} for JAX-MD GNN, skipping.".format(n, n_max_jaxmd_gnn[False, False, False]))
 
@@ -239,7 +180,7 @@ def run_benchmark_loop(super_cells: List[Atoms]) -> List[Result]:
         n = len(atoms)
         print("\nSystem size n = {}\n".format(n))
 
-        run_ase(atoms, results)
+        # run_ase(atoms, results)
         run_jaxmd_pair(atoms, results)
         run_jaxmd_neighbor_list(atoms, results)
         run_jaxmd_gnn(atoms, results)
@@ -278,6 +219,7 @@ n_max_jaxmd_gnn[False, False, True] = 6336          # GNN Neighbor List (stress=
 
 super_cells = load_super_cells_from_pickle("/home/pop518504/git/gknet-benchmarks/make_supercells/supercells_100_15360_100.pickle")
 runs = 100
+oom_events: List[Tuple[Calculator, str]] = []
 
 # print("Benchmarking system sizes: {}".format(system_sizes))
 print("Performing {} run(s) per framework and system size".format(runs))
@@ -285,3 +227,5 @@ print("Memory allocation mode: {}".format(jax_utils.get_memory_allocation_mode()
 
 results = run_benchmark_loop(super_cells)
 persist_results(results, runs)
+persist_oom_events(oom_events)
+
