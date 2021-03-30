@@ -14,6 +14,8 @@ def make_cubic_supercells(n_start: int, n_stop: int, n_step: int) -> List[Atoms]
     supercells: List[Atoms] = []
 
     for requested_n in requested_system_sizes:
+        print("Computing requested n={} ...".format(requested_n))
+
         atoms = bulk("Ar", cubic=True)
         atoms, _ = make_cubic_supercell(atoms, target_size=requested_n)
         n = len(atoms)
@@ -28,9 +30,12 @@ def make_cubic_supercells(n_start: int, n_stop: int, n_step: int) -> List[Atoms]
     return supercells
 
 
-n_start = 100
-n_stop = 15360
-n_step = 100
+# n_start = 100
+# n_stop = 15360
+n_start = 23328
+n_stop = 30000
+
+n_step = 1000
 supercells = make_cubic_supercells(n_start, n_stop, n_step)
 
 output_path = "supercells_{}_{}_{}.pickle".format(n_start, n_stop, n_step)

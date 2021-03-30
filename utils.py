@@ -10,6 +10,8 @@ from itertools import groupby
 from ase.build import bulk
 from ase.atoms import Atoms
 
+legend_size = 16
+
 
 def generate_unit_cells(z_max: int, unit_cell_size):
     ns = []
@@ -65,6 +67,12 @@ def persist_oom_events(events: List[Tuple[Calculator, str]], file_name: str):
         pickle.dump(events, handle)
 
 
+def load_oom_events_from_pickle(file_path: str):
+    with open(file_path, 'rb') as handle:
+        oom_events = pickle.load(handle)
+    return oom_events
+
+
 def group_by(iterable: Iterable, key: Callable):
     '''Sorts and groups the iterable by the provided key.'''
     iterable = sorted(iterable, key=key)
@@ -110,6 +118,12 @@ def plot_runtimes(results: List[Result],
     system_sizes = get_system_sizes(results)
     fig, ax = plt.subplots(figsize=figsize)
 
+    # try to sort by average computation time to match legend order to line order - not working
+    # groups = group_by(results, lambda r: r.calculator.description)
+    # groups = map(lambda g: list(g[1]), groups)
+    # groups = sorted(list(groups), key=lambda rg: np.average([r.computation_time for r in rg]))
+
+    # for results_per_calculator in groups:
     for key, results_per_calculator in group_by(results, lambda r: r.calculator.description):
         # for example: all results of jaxmd pair for all system sizes, 100 runs each
         results_per_calculator = list(results_per_calculator)    
@@ -139,7 +153,8 @@ def plot_runtimes(results: List[Result],
                 current_system_sizes = [r.n for r in mergeable_results]
                 ax.scatter(current_system_sizes, mergeable_computation_times)
         
-        ax.plot(computed_system_sizes, computation_times, label=results_per_calculator[0].calculator.description)
+        group_label = label_converter(results_per_calculator[0].calculator.description)
+        ax.plot(computed_system_sizes, computation_times, label=group_label)
         # plt.errorbar(system_sizes, computation_times, yerr=np.array(computation_times)*10, uplims=True, lolims=True, label='uplims=True, lolims=True')
 
         if shade_by == 'minmax':
@@ -165,13 +180,18 @@ def plot_runtimes(results: List[Result],
     # TODO: Font sizes
     ax.set_ylabel("Computation time [s]", fontsize=18, fontweight='bold')
     ax.set_yscale("log")
-    ax.legend()
+
+    # print(handles)
+    # print(labels)
+    ax.legend(prop={'size': legend_size})
     
     if plot_file_name:
         fig.savefig(plot_file_name)
 
+    return fig, ax
 
-def get_xticklabels(system_sizes: List[int]) -> List[str]:
+
+def get_xticklabels(system_sizes: List[int], skip=3) -> List[str]:
     def remove_tick_label(label: str, all_labels: List[str], reduction: int):
         idx = all_labels.index(label)
         if idx % reduction == 0:
@@ -180,7 +200,7 @@ def get_xticklabels(system_sizes: List[int]) -> List[str]:
 
     upper_ticks = list(filter(lambda n: n >= 3600, system_sizes))                           # this is where everything is fine
     lower_ticks = list(filter(lambda n: n < 3600, system_sizes))                            # this is where more super cells occur -> overplotting
-    lower_ticks = list(map(lambda n: remove_tick_label(n, lower_ticks, 3), lower_ticks))    # skip every 3rd label
+    lower_ticks = list(map(lambda n: remove_tick_label(n, lower_ticks, skip), lower_ticks))    # skip every 3rd label
     return lower_ticks + upper_ticks
 
 
@@ -233,7 +253,17 @@ def plot_runtime_variances(results: List[Result], ):
         # fig.set_ylabel("Runtime")
 
     
-def plot_oom_behavior(labels: List[str], system_sizes: List[int], all_properties: List[Calculator], only_stress: List[Calculator], only_stresses: List[Calculator], only_energies_and_forces: List[Calculator], only_energies_and_forces_no_jit: List[Calculator], figsize=(10, 5)):
+def plot_oom_behavior(labels: List[str], system_sizes: List[int], all_properties: List[int], only_stress: List[int], only_stresses: List[int], only_energies_and_forces: List[int], only_energies_and_forces_no_jit: List[int], figsize=(10, 5)):
+    
+    # n where first OOM happened -> n where last computation successful
+    def normalize(oom_system_sizes: List[int]) -> List[int]:
+        normalized_system_sizes = []         
+        for n_oom in oom_system_sizes:
+            idx = system_sizes.index(n_oom)
+            normalized_system_sizes.append(system_sizes[idx - 1])
+
+        return normalized_system_sizes
+
     bar_width = 0.1
     
     # label locations
@@ -243,19 +273,27 @@ def plot_oom_behavior(labels: List[str], system_sizes: List[int], all_properties
     r4 = [x + bar_width for x in r3]
     r5 = [x + bar_width for x in r4]
 
+    # 15360 -> 13500
+    only_energies_and_forces
+
     plt.figure(figsize=figsize)
-    plt.bar(r1, all_properties, width=bar_width, label='All properties')
-    plt.bar(r2, only_stress, width=bar_width, label='Only stress')
-    plt.bar(r3, only_stresses, width=bar_width, label='Only stresses')
-    plt.bar(r4, only_energies_and_forces, width=bar_width, label='Only energies and forces')
-    plt.bar(r5, only_energies_and_forces_no_jit, width=bar_width, label='Only energies and forces, no jit')
+    plt.bar(r1, normalize(all_properties), width=bar_width, label='All properties')
+    plt.bar(r2, normalize(only_stress), width=bar_width, label='Only stress')
+    plt.bar(r3, normalize(only_stresses), width=bar_width, label='Only stresses')
+    plt.bar(r4, normalize(only_energies_and_forces), width=bar_width, label='Only energies and forces')
+    plt.bar(r5, normalize(only_energies_and_forces_no_jit), width=bar_width, label='Only energies and forces, no jit')
 
     # plt.title("Maximum number of atoms before going out-of-memory, per calculator")
-    plt.xlabel('Calculator implementations', fontweight='bold')
-    plt.xticks([r + bar_width for r in range(len(all_properties))], labels)
-    plt.ylabel('Maximum atom count', fontweight='bold')
-    plt.yticks(system_sizes)
-    plt.legend()
+    plt.xlabel('Calculator implementations', fontsize=18, fontweight='bold')
+    plt.xticks([r + bar_width for r in range(len(all_properties))], labels, fontsize=12)
+
+    plt.ylabel('Maximum atom count $n_{max}$', fontsize=18, fontweight='bold')
+
+    yticklabels = get_xticklabels(system_sizes, skip=3)
+    yticklabels[1] = ''
+    plt.yticks(system_sizes, yticklabels)
+
+    plt.legend(prop={'size': legend_size})
     plt.show()
     # plt.savefig()
 
@@ -276,3 +314,34 @@ def print_oom_behavior_runtime_vs_dedicated(system_sizes: List[int], runtime_res
             
             # print("{:<70} went runtime OOM at n={}, dedicated OOM at n={}".format(description, n_oom_runtime, n_oom_dedicated))
             print("{:<70} OOM at n={},{} (runtime, dedicated)".format(description, n_oom_runtime, n_oom_dedicated))
+
+
+def label_converter(calc_description: str) -> str:
+    converted = None
+    
+    if "ASE" in calc_description:
+        return "ASE LJ NL: Energies, Forces, Stress, Stresses"
+    
+    if "JAX-MD Pair" in calc_description:
+        converted = "JAX-MD LJ Pair"
+    if "JAX-MD Neighbor List" in calc_description:
+        converted = "JAX-MD LJ NL"
+    if "GNN" in calc_description:
+        converted = "JAX-MD GNN"
+        
+    if "(stress=True, stresses=True, jit=True)" in calc_description:
+        return converted + ": Energies, Forces, Stress, Stresses"
+    
+    if "(stress=True, stresses=False, jit=True)" in calc_description:
+        return converted + ": Energies, Forces, Stress"
+    
+    if "(stress=False, stresses=True, jit=True)" in calc_description:
+        return converted + ": Energies, Forces, Stresses"
+
+    if "(stress=False, stresses=False, jit=True)" in calc_description:
+        return converted + ": Energies, Forces"
+    
+    if "(stress=False, stresses=False, jit=False)" in calc_description:
+        return converted + ": Energies, Forces (jit=False)"
+    
+    print(calc_description)

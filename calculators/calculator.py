@@ -12,13 +12,13 @@ import itertools
 
 class Calculator(ABC):
     _warmup_time: float = None
-    _oom_runs: List[int] = []
 
     def __init__(self, box: np.ndarray, n: int, R: np.ndarray, computes_stress: bool) -> None:
         self._box = box
         self._n = n     # TODO: What do we need n for? We can derive it from R to avoid inconsistencies
         self._R = R
         self._computes_stress = computes_stress
+        self._oom_runs = 0
         
 
     @classmethod
@@ -106,14 +106,10 @@ class Calculator(ABC):
 
     def calculate(self, runs=1) -> List[Result]:
         results = []
-        # for _ in itertools.repeat(None, runs):
-        for i in range(runs):
+        for _ in itertools.repeat(None, runs):
+        # for i in range(runs):
+            elapsed_seconds, r = self._time_execution(self._compute_properties)
+            r.computation_time = elapsed_seconds
+            results.append(r)
 
-            try:       
-                elapsed_seconds, r = self._time_execution(self._compute_properties)
-                r.computation_time = elapsed_seconds
-                results.append(r)
-            except RuntimeError as e:
-                self._oom_runs.append(i + 1)
-    
         return results
