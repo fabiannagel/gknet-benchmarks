@@ -12,7 +12,7 @@ from jax_md import space, energy
 from jax_md.energy import NeighborFn, NeighborList
 from jax_md.space import DisplacementFn
 from jax_md.nn import InitFn
-from periodic_general import periodic_general
+# from periodic_general import periodic_general
 import time
 import jax.numpy as jnp
 from jax import jit, random
@@ -96,7 +96,7 @@ class BapstGNN(Calculator):
     def _initialize_potential(self, displacement_fn: Optional[DisplacementFn]) -> Tuple[space.DisplacementFn, PotentialFn]:
         if displacement_fn is None:
             warnings.warn("Using default periodic_general")
-            displacement_fn, _ = periodic_general(self._box)
+            displacement_fn, _ = space.periodic_general(self._box)
 
         if self._neighbors is None:
             self._neighbor_fn, self._init_fn, self._energy_fn = energy.graph_network_neighbor_list(displacement_fn, self._box, r_cutoff=self._r_cutoff, dr_threshold=0.0)

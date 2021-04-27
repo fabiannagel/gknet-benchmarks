@@ -11,7 +11,7 @@ from ase.atoms import Atoms
 from jax_md import space, energy
 from jax_md.space import DisplacementFn
 from jax_md.energy import NeighborFn, NeighborList
-from periodic_general import periodic_general
+# from periodic_general import periodic_general
 import jax.numpy as jnp
 from jax import jit
 from jax.config import config
@@ -99,7 +99,7 @@ class JmdLennardJonesNeighborList(Calculator):
     def _initialize_potential(self, displacement_fn: Optional[DisplacementFn]) -> Tuple[space.DisplacementFn, PotentialFn]:
         if displacement_fn is None:
             warnings.warn("Using default periodic_general")
-            displacement_fn, _ = periodic_general(self._box)
+            displacement_fn, _ = space.periodic_general(self._box)
         
         if self._neighbors is None:
             self._neighbor_fn, self._energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, self._box, sigma=self._sigma, epsilon=self._epsilon, r_onset=self._r_onset, r_cutoff=self._r_cutoff, per_particle=True)

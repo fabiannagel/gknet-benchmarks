@@ -10,7 +10,7 @@ from calculators.result import JaxResult, Result
 from ase.atoms import Atoms
 from jax_md import space
 from jax_md.space import DisplacementFn
-from periodic_general import periodic_general
+# from periodic_general import periodic_general
 import jax.numpy as jnp
 from jax import jit
 from jax.config import config
@@ -93,7 +93,7 @@ class JmdLennardJonesPair(Calculator):
     def _initialize_potential(self, displacement_fn: Optional[DisplacementFn]) -> Tuple[space.DisplacementFn, PotentialFn]:
         if displacement_fn is None:
             warnings.warn("Using default periodic_general")
-            displacement_fn, _ = periodic_general(self._box)
+            displacement_fn, _ = space.periodic_general(self._box)
 
         if self._stress or self._stresses:
             strained_potential = jax_utils.get_strained_pair_potential(self._box, displacement_fn, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, self._stress, self._stresses)

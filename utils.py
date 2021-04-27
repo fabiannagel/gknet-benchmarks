@@ -277,11 +277,11 @@ def plot_oom_behavior(labels: List[str], system_sizes: List[int], all_properties
     only_energies_and_forces
 
     plt.figure(figsize=figsize)
-    plt.bar(r1, normalize(all_properties), width=bar_width, label='All properties')
-    plt.bar(r2, normalize(only_stress), width=bar_width, label='Only stress')
-    plt.bar(r3, normalize(only_stresses), width=bar_width, label='Only stresses')
-    plt.bar(r4, normalize(only_energies_and_forces), width=bar_width, label='Only energies and forces')
-    plt.bar(r5, normalize(only_energies_and_forces_no_jit), width=bar_width, label='Only energies and forces, no jit')
+    plt.bar(r1, normalize(all_properties), width=bar_width, label='Energies, Forces, Stress, Stresses')
+    plt.bar(r2, normalize(only_stress), width=bar_width, label='Energies, Forces, Stress')
+    plt.bar(r3, normalize(only_stresses), width=bar_width, label='Energies, Forces, Stresses')
+    plt.bar(r4, normalize(only_energies_and_forces), width=bar_width, label='Energies, Forces')
+    plt.bar(r5, normalize(only_energies_and_forces_no_jit), width=bar_width, label='Energies, Forces (jit=False)')
 
     # plt.title("Maximum number of atoms before going out-of-memory, per calculator")
     plt.xlabel('Calculator implementations', fontsize=18, fontweight='bold')

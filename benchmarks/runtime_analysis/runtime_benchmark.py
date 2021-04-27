@@ -137,8 +137,8 @@ def run_benchmark_loop(super_cells: List[Atoms]) -> List[Result]:
         print("\nSystem size n = {}\n".format(n))
 
         # run_ase(atoms, results)
-        # run_jaxmd_pair(atoms, results)
-        # run_jaxmd_neighbor_list(atoms, results)
+        run_jaxmd_pair(atoms, results)
+        run_jaxmd_neighbor_list(atoms, results)
         run_jaxmd_gnn(atoms, results)
 
     return results  

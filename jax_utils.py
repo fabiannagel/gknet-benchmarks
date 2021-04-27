@@ -9,9 +9,9 @@ from enum import Enum
 import warnings
 from jax_md import space, quantity
 import jax.numpy as jnp
-from periodic_general import periodic_general as new_periodic_general, transform
-from periodic_general import inverse as new_inverse
-from periodic_general import transform as new_transform
+# from periodic_general import periodic_general as new_periodic_general, transform
+# from periodic_general import inverse as new_inverse
+# from periodic_general import transform as new_transform
 
 
 class XlaMemoryFlag(Enum):
@@ -69,13 +69,19 @@ def new_get_displacement(atoms):
         return displacement
 
     cell = atoms.get_cell().array
-    inverse_cell = new_inverse(cell)
-    displacement_in_scaled_coordinates, _ = new_periodic_general(cell)
+    # inverse_cell = new_inverse(cell)
+    # displacement_in_scaled_coordinates, _ = new_periodic_general(cell)
+
+    inverse_cell = space.inverse(cell)
+    displacement_in_scaled_coordinates, _ = space.periodic_general(cell)
 
     # **kwargs are now used to feed through the box information
     def displacement(Ra: space.Array, Rb: space.Array, **kwargs) -> space.Array:
-        Ra_scaled = new_transform(inverse_cell, Ra)
-        Rb_scaled = new_transform(inverse_cell, Rb)
+        # Ra_scaled = new_transform(inverse_cell, Ra)
+        # Rb_scaled = new_transform(inverse_cell, Rb)
+
+        Ra_scaled = space.transform(inverse_cell, Ra)
+        Rb_scaled = space.transform(inverse_cell, Rb)
         return displacement_in_scaled_coordinates(Ra_scaled, Rb_scaled, **kwargs)
 
     return displacement
@@ -107,7 +113,7 @@ def get_strained_pair_potential(box: jnp.ndarray, displacement_fn: DisplacementF
         deformation = jnp.zeros_like(box)
 
         # a function to symmetrize the deformation tensor and apply it to the box
-        transform_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
+        transform_box_fn = lambda deformation: space.transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
 
         # atomwise and total energy functions that act on the transformed box. same for force, stress and stresses.
         deformation_energy_fn = lambda deformation, R: energy_fn(R, box=transform_box_fn(deformation))
@@ -161,7 +167,7 @@ def get_strained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray,
         deformation = jnp.zeros_like(box)
 
         # a function to symmetrize the deformation tensor and apply it to the box
-        transform_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
+        transform_box_fn = lambda deformation: space.transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
         
         # atomwise and total energy functions that act on the transformed box. same for force, stress and stresses.
         deformation_energy_fn = lambda deformation, R, *args, **kwargs: energy_fn(R, box=transform_box_fn(deformation), neighbor=neighbors)
@@ -206,7 +212,7 @@ def get_strained_gnn_potential(energy_fn, neighbors, params, box: jnp.ndarray, c
     
     def strained_potential_fn(R: space.Array) -> PotentialProperties:
         deformation = jnp.zeros_like(box)
-        transform_box_fn = lambda deformation: transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
+        transform_box_fn = lambda deformation: space.transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box) 
 
         total_deformation_energy_fn = lambda params, R, deformation, neighbors: energy_fn(params, R, neighbors, box=transform_box_fn(deformation))
         force_fn = lambda params, R, deformation, neighbors: grad(total_deformation_energy_fn, argnums=1)(params, R, deformation, neighbors) * -1
