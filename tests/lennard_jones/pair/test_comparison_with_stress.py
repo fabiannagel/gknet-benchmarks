@@ -14,7 +14,6 @@ class ComparisonWithStress(unittest.TestCase):
     _sigma = 2.0
     _epsilon = 1.5
 
-
     def __init__(self, methodName: str) -> None:
         super().__init__(methodName=methodName)
 
@@ -94,4 +93,4 @@ class ComparisonWithStress(unittest.TestCase):
     def test_stresses_equality(self):
         results_with_stresses = list(filter(lambda r: r.stresses is not None, self._results))
         stresses = [r.stresses for r in results_with_stresses]
-        assert_arrays_all_close(stresses, atol=1E-17)
+        assert_arrays_all_close(stresses, atol=1E-4)

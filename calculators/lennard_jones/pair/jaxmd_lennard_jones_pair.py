@@ -46,7 +46,7 @@ class JmdLennardJonesPair(Calculator):
 
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, adjust_radii: bool, jit: bool, skip_initialization=False) -> JmdLennardJonesPair:
-        displacement_fn = jax_utils.new_get_displacement(atoms)
+        displacement_fn, shift_fn = jax_utils.get_displacement(atoms)
         
         # JAX-MD's LJ implementation multiplies onset and cutoff by sigma. To be compatible w/ ASE's implementation, we need to perform these adjustments.
         if adjust_radii:

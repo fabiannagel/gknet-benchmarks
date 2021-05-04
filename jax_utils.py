@@ -1,4 +1,5 @@
 from typing import Callable, Dict, Tuple
+from ase.atoms import Atoms
 from jax import vmap, random
 from jax.api import grad, jacfwd, jit
 from jax_md import energy
@@ -9,6 +10,7 @@ from enum import Enum
 import warnings
 from jax_md import space, quantity
 import jax.numpy as jnp
+
 # from periodic_general import periodic_general as new_periodic_general, transform
 # from periodic_general import inverse as new_inverse
 # from periodic_general import transform as new_transform
@@ -59,32 +61,31 @@ def generate_R(n: int, scaling_factor: float) -> jnp.ndarray:
     return random.uniform(subkey, shape=(n, 3)) * scaling_factor
 
 
-def new_get_displacement(atoms):
-    '''what asax.utils.get_displacement() does, only with functions from the new periodic_general()'''
-    # TODO: Refactor once new periodic_general() is released
-
+def get_displacement(atoms: Atoms):
     if not all(atoms.get_pbc()):
-        displacement, _ = space.free()
         warnings.warn("Atoms object without periodic boundary conditions passed!")
-        return displacement
+        return space.free()
+
+    box = atoms.get_cell().array
+    return space.periodic_general(box, fractional_coordinates=False)
+    # return get_real_displacement(atoms)
+
+
+def get_real_displacement(atoms):
+    if not all(atoms.get_pbc()):
+        raise ValueError("Atoms object without periodic boundary conditions passed!")
 
     cell = atoms.get_cell().array
-    # inverse_cell = new_inverse(cell)
-    # displacement_in_scaled_coordinates, _ = new_periodic_general(cell)
-
     inverse_cell = space.inverse(cell)
     displacement_in_scaled_coordinates, _ = space.periodic_general(cell)
 
     # **kwargs are now used to feed through the box information
     def displacement(Ra: space.Array, Rb: space.Array, **kwargs) -> space.Array:
-        # Ra_scaled = new_transform(inverse_cell, Ra)
-        # Rb_scaled = new_transform(inverse_cell, Rb)
-
         Ra_scaled = space.transform(inverse_cell, Ra)
         Rb_scaled = space.transform(inverse_cell, Rb)
         return displacement_in_scaled_coordinates(Ra_scaled, Rb_scaled, **kwargs)
 
-    return displacement
+    return displacement, None
 
 
 def jit_if_wanted(do_jit: bool, *args) -> Tuple:

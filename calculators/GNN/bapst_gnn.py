@@ -53,7 +53,7 @@ class BapstGNN(Calculator):
 
     @classmethod
     def from_ase_atoms(cls, atoms: Atoms, r_cutoff: float, stress: bool, stresses: bool, jit: bool, skip_initialization=False) -> BapstGNN:
-        displacement_fn = jax_utils.new_get_displacement(atoms)
+        displacement_fn, shift_fn = jax_utils.get_displacement(atoms)
         return super().from_ase_atoms(atoms, r_cutoff, stress, stresses, jit, displacement_fn, skip_initialization)
 
 
