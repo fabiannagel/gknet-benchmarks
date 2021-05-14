@@ -4,37 +4,21 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 from ase.atoms import Atoms
+from calculators.result import Result
 import numpy as np
 import time
-
-@dataclass
-class Result():
-    calculator: Calculator
-    
-    energy: float
-    energies: np.ndarray
-    
-    forces: np.ndarray
-    
-    stress: float
-    stresses: np.ndarray
-    
-    computation_time: float = None
-
-    # TODO: Verify conservational laws on construction
-
+import itertools
 
 
 class Calculator(ABC):
-    _runtimes = []
-    _atoms: Optional[Atoms]
-    _energy_fn: Callable
+    _warmup_time: float = None
 
     def __init__(self, box: np.ndarray, n: int, R: np.ndarray, computes_stress: bool) -> None:
         self._box = box
         self._n = n     # TODO: What do we need n for? We can derive it from R to avoid inconsistencies
         self._R = R
         self._computes_stress = computes_stress
+        self._oom_runs = 0
         
 
     @classmethod
@@ -46,6 +30,7 @@ class Calculator(ABC):
 
     @classmethod
     def create_potential(cls, box_size: float, n: int, R: Optional[np.ndarray], *args) -> cls:
+        # TODO: Decide if generating our own distances here is a valid use case. Don't we always initialize via ASE in the end?
         if R is None or len(R) == 0:
             R = cls._generate_R(cls, n, box_size)
         box = box_size * np.eye(3)
@@ -64,7 +49,6 @@ class Calculator(ABC):
         """Returns a matrix of pairwise atom distances of shape (n, 3)."""
         pass
     
-
     @property
     def box(self) -> np.ndarray:
         return self._box
@@ -95,16 +79,37 @@ class Calculator(ABC):
         pass    
 
 
+    def _time_execution(self, callable: Callable, *args, **kwargs):
+        start = time.monotonic()
+        return_val = callable(*args, **kwargs)
+        elapsed_seconds = time.monotonic() - start   
+        return elapsed_seconds, return_val
+
+
+    @abstractmethod
+    def _perform_warm_up(self):
+        pass
+
+
+    def warm_up(self):
+        if self._warmup_time:
+            raise ValueError("A warm-up has already been performed.")
+        
+        elapsed_seconds, _ = self._time_execution(self._perform_warm_up)
+        self._warmup_time = elapsed_seconds
+
+
     @abstractmethod
     def _compute_properties(self) -> Result: 
         pass
 
 
-    def calculate(self) -> Result:
-        start = time.time()
-        result = self._compute_properties()
-        elapsed_seconds = (time.time() - start) / 1000
-        self._runtimes.append(elapsed_seconds)
+    def calculate(self, runs=1) -> List[Result]:
+        results = []
+        for _ in itertools.repeat(None, runs):
+        # for i in range(runs):
+            elapsed_seconds, r = self._time_execution(self._compute_properties)
+            r.computation_time = elapsed_seconds
+            results.append(r)
 
-        result.computation_time = elapsed_seconds
-        return result
+        return results

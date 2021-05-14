@@ -2,8 +2,7 @@ from typing import List
 from ase.atoms import Atoms
 from calculators.calculator import Calculator
 import unittest
-from unittest.case import skip
-from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
+from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 from calculators.lennard_jones.pair.ase_lennard_jones_pair import AseLennardJonesPair
 from ...utils import *
 
@@ -25,8 +24,8 @@ class ComparisonWithoutStress(unittest.TestCase):
         return AseLennardJonesPair.create_potential(self._n, self._sigma, self._epsilon, r_cutoff=None, r_onset=None)
 
 
-    def _create_jaxmd_calculator(self, atoms: Atoms) -> JmdLennardJonesPair:
-        return JmdLennardJonesPair.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, stresses=False, adjust_radii=True, jit=False)
+    def _create_jaxmd_calculator(self, atoms: Atoms) -> JmdLennardJonesNeighborList:
+        return JmdLennardJonesNeighborList.from_ase_atoms(atoms, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, stress=False, stresses=False, adjust_radii=True, jit=True)
 
 
     def setUp(self):
@@ -63,12 +62,6 @@ class ComparisonWithoutStress(unittest.TestCase):
     def test_energy_equality(self):
         total_energy = [r.energy for r in self._results]
         assert_arrays_all_close(total_energy, atol=1E-15)
-
-
-    def test_energy_conservation(self):
-        summed_energy = list(map(lambda r: np.sum(r.energies), self._results))
-        computed_energy = list(map(lambda r: r.energy, self._results))
-        assert_arrays_all_close([summed_energy, computed_energy], atol=1E-17)
     
     
     def test_energies_equality(self):

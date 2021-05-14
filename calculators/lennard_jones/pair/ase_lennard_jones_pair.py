@@ -2,12 +2,16 @@ from __future__ import annotations
 import warnings
 
 from typing import List, Optional
-from calculators.calculator import Calculator, Result
+from calculators.calculator import Calculator
+from calculators.result import Result
 
+from vibes.helpers.supercell import make_cubic_supercell
 from ase import Atoms
 from ase.build import bulk
 from ase.calculators.lj import LennardJones
 from ase.calculators.calculator import PropertyNotImplementedError
+from ase.constraints import voigt_6_to_full_3x3_stress
+
 
 import numpy as np
 import itertools
@@ -15,6 +19,8 @@ import math
 
 
 class AseLennardJonesPair(Calculator):
+    _stress = True
+    _stresses = True
     
     def __init__(self, box_size: float, n: int, R: np.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float):
         super().__init__(box_size, n, R, True)
@@ -28,7 +34,7 @@ class AseLennardJonesPair(Calculator):
     def from_ase_atoms(cls, atoms: Atoms, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> AseLennardJonesPair:
         obj: AseLennardJonesPair = super().from_ase_atoms(atoms, sigma, epsilon, r_cutoff, r_onset)
         obj._atoms = atoms
-        obj._atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=r_cutoff, ro=r_onset, smooth=True)
+        obj._calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=r_cutoff, ro=r_onset, smooth=True)
         return obj    
 
 
@@ -39,7 +45,10 @@ class AseLennardJonesPair(Calculator):
         If omitted, r_cutoff is set to half the maximum super cell lattice vector magnitude.
         If omitted, r_onset is set to 0.8 * r_cutoff
         '''        
-        atoms = bulk('Ar', cubic=True) * cls._compute_supercell_multipliers('Ar', n)
+
+        atoms = bulk("Ar", cubic=True)
+        atoms, _ = make_cubic_supercell(atoms, target_size=n)
+        # atoms = bulk('Ar', cubic=True) * cls._compute_supercell_multipliers('Ar', n)
         
         if r_cutoff is None:
             max_box_length = np.max([np.linalg.norm(uv) for uv in atoms.get_cell().array])
@@ -65,7 +74,7 @@ class AseLennardJonesPair(Calculator):
 
     @property
     def description(self):
-        return "ASE Lennard-Jones Calculator"
+        return "ASE Neighbor List"
 
 
     @property
@@ -90,11 +99,30 @@ class AseLennardJonesPair(Calculator):
 
 
     def _compute_properties(self) -> Result:
-        energy = self._atoms.get_potential_energy()
-        energies = self._atoms.get_potential_energies()
-        forces = self._atoms.get_forces()
+        self._calc.atoms = None
+        # self._calc.nl = None
+        self._calc.calculate(atoms=self._atoms)
 
-        stress = self._atoms.get_stress(voigt=False)
-        stresses = self._atoms.get_stresses(voigt=False)
-        return Result(self, energy, energies, forces, stress, stresses)
+        energy = self._calc.results['energy']
+        energies = self._calc.results['energies']
+        forces = self._calc.results['forces']
+        stress = voigt_6_to_full_3x3_stress(self._calc.results['stress'])
+        stresses = voigt_6_to_full_3x3_stress(self._calc.results['stresses'])
+
+        return Result(self, self._n, energy, energies, forces, stress, stresses)
+
+
+    def _perform_warm_up(self):
+        self._calc.nl = None
+        self._compute_properties()
+
         
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['_atoms']
+        return state
+  
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        error_fn = lambda *args, **kwargs: print("Pickled instance cannot compute new data")
+        self._atoms = error_fn
