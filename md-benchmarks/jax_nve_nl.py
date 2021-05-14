@@ -7,10 +7,10 @@ from jax import jit, lax
 from jax.config import config
 from jax_md import simulate, space, energy
 from jax_md.energy import NeighborFn, NeighborList
-from jax_md.simulate import ApplyFn
+from jax_md.simulate import ApplyFn, ShiftFn
 
-from asax import jax_utils
-from asax.jax_utils import DisplacementFn, ShiftFn, EnergyFn, NVEState
+import jax_utils
+from jax_utils import DisplacementFn, EnergyFn, NVEState
 
 config.update("jax_enable_x64", True)
 
@@ -31,10 +31,12 @@ class NveSimulation:
     # batch_times_ms: List[float]
     batch_times_ms: Dict[int, float]  # step, float
 
-    def __init__(self, atoms: Atoms, dt: float, batch_size: int):
+    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom):
         self.atoms = atoms
         self.dt = dt
         self.batch_size = batch_size
+        self.dr_threshold = dr_threshold
+
         self.box = atoms.get_cell().array
         self.R = atoms.get_positions()
         self._initialize()
@@ -67,7 +69,8 @@ class NveSimulation:
                                                                     sigma=sigma,
                                                                     epsilon=epsilon,
                                                                     r_onset=normalized_ro,
-                                                                    r_cutoff=normalized_rc)
+                                                                    r_cutoff=normalized_rc,
+                                                                    dr_threshold=self.dr_threshold)
 
         return neighbor_fn, jit(energy_fn)
 
@@ -122,6 +125,7 @@ class NveSimulation:
 
         i = 0
         start = time.monotonic()
+        global_start = time.monotonic()
 
         while i < steps:
             i += self.batch_size
@@ -142,11 +146,19 @@ class NveSimulation:
             if verbose:
                 print("Steps {}/{} took {} ms".format(i, steps, step_ms))
 
+        total_simulation_time = time.monotonic() - global_start
+        print("Total simulation time: {} s".format(total_simulation_time))
+        print("Total MD steps: {}".format(steps * self.batch_size))
 
-atoms = jax_utils.initialize_cubic_argon(multiplier=10)
+atoms = jax_utils.initialize_cubic_argon(multiplier=8)
+print("n = {}".format(len(atoms)))
+
 sim = NveSimulation(atoms, dt=5 * units.fs, batch_size=5)
-sim.run(steps=1000)
+sim.run(steps=5000, verbose=True)
 
-print("Total simulation time: {} s".format(sim.total_simulation_time))
-print("Average runtime/step: {} ms".format(np.mean(sim.step_times)))
+print(len(sim.nl_recalculation_events))
+
+
+# print("Total simulation time: {} s".format(sim.total_simulation_time))
+# print("Average runtime/step: {} ms".format(np.mean(sim.step_times)))
 
