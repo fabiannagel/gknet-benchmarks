@@ -1,19 +1,102 @@
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, List
+
+import numpy as np
 from ase.atoms import Atoms
+from ase.build import bulk
+from ase.calculators.lj import LennardJones
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 from jax import vmap, random
 from jax.api import grad, jacfwd, jit
+from jax.interpreters.xla import DeviceArray
 from jax_md import energy
 from jax_md.energy import DisplacementFn
-from calculators.calculator import Calculator
+from jax_md.simulate import NVEState
+
 from os import environ
 from enum import Enum
 import warnings
 from jax_md import space, quantity
 import jax.numpy as jnp
 
-# from periodic_general import periodic_general as new_periodic_general, transform
-# from periodic_general import inverse as new_inverse
-# from periodic_general import transform as new_transform
+
+EnergyFn = Callable[[space.Array, energy.NeighborList], space.Array]
+PotentialFn = Callable[[space.Array], Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, None, None]]
+PotentialProperties = Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]
+
+
+def strained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray) -> PotentialFn:
+    def potential(R: space.Array) -> PotentialProperties:
+        # 1) Set the box under strain using a symmetrized deformation tensor
+        # 2) Override the box in the energy function
+        # 3) Derive forces, stress and stresses as gradients of the deformed energy function
+        deformation = jnp.zeros_like(box)
+
+        # a function to symmetrize the deformation tensor and apply it to the box
+        transform_box_fn = lambda deformation: space.transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box)
+
+        # atomwise and total energy functions that act on the transformed box. same for force, stress and stresses.
+        deformation_energy_fn = lambda deformation, R, *args, **kwargs: energy_fn(R, box=transform_box_fn(deformation),
+                                                                                  neighbor=neighbors)
+        total_energy_fn = lambda deformation, R, *args, **kwargs: jnp.sum(deformation_energy_fn(deformation, R))
+        force_fn = lambda deformation, R, *args, **kwargs: grad(total_energy_fn, argnums=1)(deformation, R) * -1
+
+        stress_fn = lambda deformation, R, *args, **kwargs: grad(total_energy_fn, argnums=0)(deformation,
+                                                                                             R) / jnp.linalg.det(box)
+        stress = stress_fn(deformation, R, neighbor=neighbors)
+
+        total_energy = total_energy_fn(deformation, R, neighbor=neighbors)
+        atomwise_energies = deformation_energy_fn(deformation, R, neighbor=neighbors)
+        forces = force_fn(deformation, R, neighbor=neighbors)
+
+        return total_energy, atomwise_energies, forces, stress
+
+    return potential
+
+
+def unstrained_neighbor_list_potential(energy_fn, neighbors) -> PotentialFn:
+    def potential(R: space.Array) -> PotentialProperties:
+        total_energy_fn = lambda R, *args, **kwargs: jnp.sum(energy_fn(R, *args, **kwargs))
+        forces_fn = quantity.force(total_energy_fn)
+
+        total_energy = total_energy_fn(R, neighbor=neighbors)
+        atomwise_energies = energy_fn(R, neighbor=neighbors)
+        forces = forces_fn(R, neighbor=neighbors)
+        stress, stresses = None, None
+        return total_energy, atomwise_energies, forces, stress
+
+    return potential
+
+
+def get_initial_nve_state(atoms: Atoms) -> NVEState:
+    R = atoms.get_positions()
+    V = atoms.get_velocities()  # å/ ase fs
+    forces = atoms.get_forces()
+    masses = atoms.get_masses()[0]
+    return NVEState(R, V, forces, masses)
+
+
+def block_and_dispatch(properties: Tuple[DeviceArray, ...]):
+    for p in properties:
+        if p is None:
+            continue
+
+        p.block_until_ready()
+
+    return [None if p is None else np.array(p) for p in properties]
+
+
+def initialize_cubic_argon(multiplier: List[int] = 5, temperature_K: int = 30):
+    atoms = bulk("Ar", cubic=True) * [multiplier, multiplier, multiplier]
+    MaxwellBoltzmannDistribution(atoms, temperature_K=temperature_K)
+    Stationary(atoms)
+
+    atoms.calc = LennardJones(sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0, smooth=True) # TODO: Remove later
+    return atoms
+
+
+
+
+## old stuff here
 
 
 class XlaMemoryFlag(Enum):
@@ -259,7 +342,7 @@ def get_unstrained_gnn_potential(energy_fn, neighbors, params) -> PotentialFn:
     return unstrained_potential_fn    
 
 # TODO: JaxCalculator
-def get_state(calculator: Calculator) -> Dict:
+def get_state(calculator) -> Dict:
     # Copy the object's state from self.__dict__ which contains
     # all our instance attributes. Always use the dict.copy()
     # method to avoid modifying the original state.
@@ -279,7 +362,7 @@ def get_state(calculator: Calculator) -> Dict:
     return state
 
 
-def set_state(calculator: Calculator, state: Dict):
+def set_state(calculator, state: Dict):
     # Restore instance attributes (i.e., filename and lineno).
     calculator.__dict__.update(state)
     # Restore the previously opened file's state. To do so, we need to
