@@ -85,12 +85,12 @@ def block_and_dispatch(properties: Tuple[DeviceArray, ...]):
     return [None if p is None else np.array(p) for p in properties]
 
 
-def initialize_cubic_argon(multiplier: List[int] = 5, temperature_K: int = 30):
+def initialize_cubic_argon(multiplier: List[int] = 5, sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0, temperature_K: int = 30) -> Atoms:
     atoms = bulk("Ar", cubic=True) * [multiplier, multiplier, multiplier]
     MaxwellBoltzmannDistribution(atoms, temperature_K=temperature_K)
     Stationary(atoms)
 
-    atoms.calc = LennardJones(sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0, smooth=True) # TODO: Remove later
+    atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=rc, ro=ro, smooth=True) # TODO: Remove later
     return atoms
 
 
@@ -277,7 +277,7 @@ def get_strained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray,
     return strained_potential_fn
 
 
-def get_unstrained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray, compute_stress: bool, compute_stresses: bool) -> PotentialFn:
+def get_unstrained_neighbor_list_potential(energy_fn, neighbors) -> PotentialFn:
 
     def unstrained_potential(R: space.Array) -> PotentialProperties:
         total_energy_fn = lambda R, *args, **kwargs: jnp.sum(energy_fn(R, *args, **kwargs))

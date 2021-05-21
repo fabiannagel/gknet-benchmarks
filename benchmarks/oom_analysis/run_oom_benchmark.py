@@ -22,20 +22,16 @@ def run_expect_oom(calculator_class, ase: AseLennardJonesPair, stress: bool, str
     try:
         if calculator_class == BapstGNN:
             calc = calculator_class.from_ase_atoms(ase._atoms, r_cutoff=r_cutoff, stress=stress, stresses=stresses, jit=jit)
-            # calc = calculator_class.create_potential(box_size, n, R_scaled=None, r_cutoff=r_cutoff, r_onset=r_onset, stress=stress, stresses=stresses, jit=jit)
         else:
             calc = calculator_class.from_ase_atoms(ase._atoms, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff, r_onset=r_onset, stress=stress, stresses=stresses, adjust_radii=True, jit=jit)
-            # calc = calculator_class.create_potential(box_size, n, R_scaled=None, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff, r_onset=r_onset, stress=stress, stresses=stresses, jit=jit)
         calc.calculate()
     except RuntimeError:
         if calc is None:
             # in neighbor lists and GNNs, OOM might have occurred during initialization and not the actual computation. Thus, we need to create a data-only instance which we can reference here.
             if calculator_class == BapstGNN:
                 calc = calculator_class.from_ase_atoms(ase._atoms, r_cutoff=r_cutoff, stress=stress, stresses=stresses, jit=jit, skip_initialization=True)
-                # calc = calculator_class.create_potential(box_size, n, R_scaled=None, r_cutoff=r_cutoff, r_onset=r_onset, stress=stress, stresses=stresses, jit=jit, skip_initialization=True)
             else:
                 calc = calculator_class.from_ase_atoms(ase._atoms, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff, r_onset=r_onset, stress=stress, stresses=stresses, adjust_radii=True, jit=jit, skip_initialization=True)
-                # calc = calculator_class.create_potential(box_size, n, R_scaled=None, sigma=sigma, epsilon=epsilon, r_cutoff=r_cutoff, r_onset=r_onset, stress=stress, stresses=stresses, jit=jit, skip_initialization=True)
         oom_calculators.append(calc)
 
 
