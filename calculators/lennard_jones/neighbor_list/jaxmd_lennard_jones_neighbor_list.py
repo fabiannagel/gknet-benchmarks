@@ -109,7 +109,7 @@ class JmdLennardJonesNeighborList(Calculator):
             strained_potential = jax_utils.get_strained_neighbor_list_potential(self._energy_fn, self._neighbors, self._box, self._stress, self._stresses)
             return jax_utils.jit_if_wanted(self._jit, displacement_fn, strained_potential)
         
-        unstrained_potential = jax_utils.get_unstrained_neighbor_list_potential(self._energy_fn, self._neighbors, self._box, self._stress, self._stresses)
+        unstrained_potential = jax_utils.get_unstrained_neighbor_list_potential(self._energy_fn, self._neighbors)
         return jax_utils.jit_if_wanted(self._jit, displacement_fn, unstrained_potential)
 
 

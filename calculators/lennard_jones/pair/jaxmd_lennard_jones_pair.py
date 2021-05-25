@@ -99,7 +99,7 @@ class JmdLennardJonesPair(Calculator):
             strained_potential = jax_utils.get_strained_pair_potential(self._box, displacement_fn, self._sigma, self._epsilon, self._r_cutoff, self._r_onset, self._stress, self._stresses)
             return jax_utils.jit_if_wanted(self._jit, displacement_fn, strained_potential)
 
-        unstrained_potential = jax_utils.get_unstrained_pair_potential(self._box, displacement_fn, self._sigma, self._epsilon, self._r_cutoff, self._r_onset)
+        unstrained_potential = jax_utils.get_unstrained_pair_potential(displacement_fn, self._sigma, self._epsilon, self._r_cutoff, self._r_onset)
         return jax_utils.jit_if_wanted(self._jit, displacement_fn, unstrained_potential)
 
 

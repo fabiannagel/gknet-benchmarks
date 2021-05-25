@@ -224,7 +224,7 @@ def get_strained_pair_potential(box: jnp.ndarray, displacement_fn: DisplacementF
     return strained_potential_fn
 
 
-def get_unstrained_pair_potential(box: jnp.ndarray, displacement_fn: DisplacementFn, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> PotentialFn:
+def get_unstrained_pair_potential(displacement_fn: DisplacementFn, sigma: float, epsilon: float, r_cutoff: float, r_onset: float) -> PotentialFn:
 
     def unstrained_potential_fn(R: space.Array) -> PotentialProperties:
         energy_fn = energy.lennard_jones_pair(displacement_fn, sigma=sigma, epsilon=epsilon, r_onset=r_onset, r_cutoff=r_cutoff, per_particle=True)       
