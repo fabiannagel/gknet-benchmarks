@@ -12,6 +12,10 @@ from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJo
 from calculators.lennard_jones.neighbor_list.jaxmd_lennard_jones_neighbor_list import JmdLennardJonesNeighborList
 from calculators.GNN.bapst_gnn import BapstGNN
 
+import jax
+jax.config.update("jax_log_compiles", False)
+
+
 
 def has_caught_oom(callable: Callable, **kwargs) -> bool:
     # we don't care about skipped runs here, these are tolerated!
