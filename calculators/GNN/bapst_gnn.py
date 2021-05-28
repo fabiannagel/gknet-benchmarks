@@ -17,7 +17,7 @@ import time
 import jax.numpy as jnp
 from jax import jit, random
 from jax.config import config
-config.update("jax_enable_x64", True)
+config.update("jax_enable_x64", False)
 # config.update("jax_log_compiles", 1)
 
 class BapstGNN(Calculator):

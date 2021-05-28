@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import jit, lax, random
 from jax.config import config
-config.update("jax_enable_x64", True)
+config.update("jax_enable_x64", False)
 from jax_md import energy, space, simulate, quantity
 import jax_utils
 import time

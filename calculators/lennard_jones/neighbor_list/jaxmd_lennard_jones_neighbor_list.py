@@ -15,7 +15,7 @@ from jax_md.energy import NeighborFn, NeighborList
 import jax.numpy as jnp
 from jax import jit
 from jax.config import config
-config.update("jax_enable_x64", True)
+config.update("jax_enable_x64", False)
 # config.update("jax_log_compiles", 0)
 
 class JmdLennardJonesNeighborList(Calculator):

@@ -12,7 +12,7 @@ from jax_md.simulate import ApplyFn, ShiftFn
 import jax_utils
 from jax_utils import DisplacementFn, EnergyFn, NVEState
 
-config.update("jax_enable_x64", True)
+config.update("jax_enable_x64", False)
 
 
 class NveSimulation:

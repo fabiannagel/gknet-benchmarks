@@ -146,4 +146,4 @@ super_cells = load_super_cells_from_pickle(
 benchmark = RuntimeBenchmark(super_cells, runs=100)
 benchmark.run()
 
-persist_results(benchmark.results, runs=100, descriptor="new_benchmark_test_foo")
+persist_results(benchmark.results, runs=100, descriptor="float32_benchmarks")
