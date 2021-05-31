@@ -1,3 +1,4 @@
+-f https://storage.googleapis.com/jax-releases/jax_releases.html
 absl-py==0.12.0
 appnope==0.1.2
 argon2-cffi==20.1.0
