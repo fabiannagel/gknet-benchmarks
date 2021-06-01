@@ -1,3 +1,5 @@
+# install numpy via conda first to receive Intel MKL support
+
 -f https://storage.googleapis.com/jax-releases/jax_releases.html
 absl-py==0.12.0
 appnope==0.1.2
@@ -42,7 +44,6 @@ nbconvert==6.0.7
 nbformat==5.1.3
 nest-asyncio==1.5.1
 notebook==6.4.0
-numpy==1.20.3
 opt-einsum==3.3.0
 packaging==20.9
 pandas==1.2.4
