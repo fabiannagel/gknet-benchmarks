@@ -345,3 +345,42 @@ def label_converter(calc_description: str) -> str:
         return converted + ": Energies, Forces (jit=False)"
     
     print(calc_description)
+
+
+
+
+def extract_mean_runtimes(results: List[Result]):
+    """
+    Should return raw data for plotting:
+    
+    trace description, system sizes, runtimes (mean of all runs)
+    """
+    performed_runs = []
+    data = {}
+
+    for key, results_per_calculator in group_by(results, lambda r: r.calculator.description):
+        results_per_calculator = list(results_per_calculator)    
+
+        print(key)
+        
+        for key, mergeable_results in group_by(results_per_calculator, lambda r: r.n):
+            mergeable_results = list(mergeable_results)
+            performed_runs.append(len(mergeable_results))
+
+            calculator_description = results_per_calculator[0].description
+            n = mergeable_results[0].n
+            mergeable_computation_times = [r.computation_time for r in mergeable_results]
+
+            data[calculator_description][n]['mean_runtime'] = np.mean(mergeable_computation_times)
+            data[calculator_description][n]['min_runtime'] = np.min(mergeable_computation_times)
+            data[calculator_description][n]['max_runtime'] = np.max(mergeable_computation_times)
+            data[calculator_description][n]['std'] = np.std(mergeable_computation_times)
+            
+        group_label = label_converter(results_per_calculator[0].calculator.description)
+        data[calculator_description]['label'] = group_label
+        
+    # sanity check: all calculators should have consistently performed e.g. 100 runs per system size
+    if len(set(performed_runs)) > 1:
+        raise RuntimeError("Inconsistent number of runs in results")
+
+    return data        
