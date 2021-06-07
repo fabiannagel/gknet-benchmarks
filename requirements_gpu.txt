@@ -4,8 +4,8 @@
 absl-py==0.12.0
 appnope==0.1.2
 argon2-cffi==20.1.0
-asax @ git+https://github.com/sirmarcel/asax.git@63ebb00cf2e12e1d0c81ca7f234d71e1bae31581
-ase @ git+https://gitlab.com/ase/ase.git@972f71342345aabc9d70983e15db823b7b65adec
+asax @ git+https://github.com/sirmarcel/asax.git@a9ea2dcbd24c9563d55e634bbecb57c280d32ba6
+ase @ git+https://gitlab.com/ase/ase.git@a9ea2dcbd24c9563d55e634bbecb57c280d32ba6
 async-generator==1.10
 attrs==21.2.0
 backcall==0.2.0
