@@ -23,7 +23,7 @@ class AseLennardJonesPair(Calculator):
     _stresses = True
     
     def __init__(self, box_size: float, n: int, R: np.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float):
-        super().__init__(box_size, n, R, True)
+        super().__init__(box_size, n, np.float32(R), True)
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff

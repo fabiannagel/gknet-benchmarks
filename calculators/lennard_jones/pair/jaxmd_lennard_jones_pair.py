@@ -10,12 +10,9 @@ from calculators.result import JaxResult, Result
 from ase.atoms import Atoms
 from jax_md import space
 from jax_md.space import DisplacementFn
-# from periodic_general import periodic_general
 import jax.numpy as jnp
 from jax import jit
-from jax.config import config
-config.update("jax_enable_x64", False)
-# config.update("jax_log_compiles", 0)
+
 
 class JmdLennardJonesPair(Calculator):
     _short_description = "JAX-MD Pair"
@@ -27,7 +24,7 @@ class JmdLennardJonesPair(Calculator):
 
     # TODO: Create lightweight type for LJ parameters?
     def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, sigma: float, epsilon: float, r_cutoff: float, r_onset: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable], skip_initialization=False):
-        super().__init__(box, n, R, stress)
+        super().__init__(box, n, jnp.float32(R), stress)
         self._sigma = sigma
         self._epsilon = epsilon
         self._r_cutoff = r_cutoff
