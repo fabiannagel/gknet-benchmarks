@@ -26,12 +26,24 @@ class JaxmdNeighborListNVE(MdDriver):
     initial_state: NVEState
     initial_neighbor_list: NeighborList
 
+    """
+        TODO:
+        - Seems like the neighbor list is breaking for small systems (multiplier < 8). This is also happening with the previous commit.
+        - Refactor private fields.    
+    """
+
     def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom):
         super().__init__(atoms, dt, batch_size)
         self.dr_threshold = dr_threshold
+
+        # TODO: Convert these to jnp.array due to NL issues?
         self.box = atoms.get_cell().array
         self.R = atoms.get_positions()
         self._initialize()
+
+    @property
+    def description(self) -> str:
+        return "JAX-MD"
 
     def _initialize(self):
         self.displacement_fn, self.shift_fn = self._setup_space()
@@ -100,7 +112,8 @@ class JaxmdNeighborListNVE(MdDriver):
 
             if neighbors.did_buffer_overflow:
                 neighbors = self.neighbor_fn(state.position)
-                print("Steps {}/{}: Neighbor list overflow, recomputing...".format(i, steps))
+                if verbose:
+                    print("Steps {}/{}: Neighbor list overflow, recomputing...".format(i, steps))
                 continue
 
             # if write_stress:

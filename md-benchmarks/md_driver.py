@@ -1,6 +1,7 @@
 import itertools
 import time
 from abc import ABC, abstractmethod
+from statistics import mean
 from typing import List
 
 import numpy as np
@@ -17,7 +18,12 @@ class MdDriver(ABC):
         self.batch_size = batch_size
 
     @property
-    def step_times(self):
+    @abstractmethod
+    def description(self) -> str:
+        pass
+
+    @property
+    def step_times(self) -> List[float]:
         """
         Returns step times as batch_times / batch_size.
         Shape adjusted value repetition such that len(step_times) = steps.
@@ -28,7 +34,11 @@ class MdDriver(ABC):
         return list(merged_step_times)
 
     @property
-    def batch_times(self):
+    def mean_step_time(self) -> float:
+        return round(mean(self.step_times), 2)
+
+    @property
+    def batch_times(self) -> List[float]:
         """
         Returns elapsed times per simulated batch. Includes write_stress if enabled.
         len(batch_times) = steps / batch_size.
@@ -36,7 +46,11 @@ class MdDriver(ABC):
         return self._batch_times
 
     @property
-    def total_simulation_time(self):
+    def mean_batch_time(self) -> float:
+        return round(mean(self.batch_times), 2)
+
+    @property
+    def total_simulation_time(self) -> float:
         """Returns the total simulation time (in seconds)."""
         return self._total_simulation_time
 
@@ -61,4 +75,4 @@ class MdDriver(ABC):
         self._batch_times = []
         start = time.monotonic()
         self._run_md(steps, write_stress, verbose)
-        self._total_simulation_time = time.monotonic() - start
+        self._total_simulation_time = round(time.monotonic() - start, 2)

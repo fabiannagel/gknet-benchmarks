@@ -10,6 +10,10 @@ class AseNeighborListNve(MdDriver):
         super().__init__(atoms, dt, batch_size)
         self.dyn = VelocityVerlet(atoms, timestep=dt)
 
+    @property
+    def description(self) -> str:
+        return "ASE"
+
     def _run_md(self, steps: int, write_stress: bool, verbose: bool):
         i = 0
 

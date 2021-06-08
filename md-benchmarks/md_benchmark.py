@@ -1,39 +1,38 @@
-import numpy as np
+from typing import Type
 from md_driver import MdDriver
 from ase_nve import AseNeighborListNve
 from jax_nve_nl import JaxmdNeighborListNVE
+from asax_nve import AsaxNeighborListNve
 from ase import Atoms, units
 import jax_utils
+import pickle
 from jax import config
 config.update("jax_enable_x64", True)
+# TODO:
 
-def run_ase(atoms: Atoms, dt: float, steps: int, batch_size: int, write_stress: bool, verbose: bool) -> MdDriver:
-    md = AseNeighborListNve(atoms, dt, batch_size)
+def persist_step_times(md: MdDriver):
+    with open(md.description, 'wb') as handle:
+        pickle.dump(md.step_times, handle)
+
+
+def run(clazz: Type[MdDriver], atoms: Atoms, dt: float, steps: int, batch_size: int, write_stress: bool, verbose: bool):
+    md = clazz(atoms, dt, batch_size)
     md.run(steps, write_stress, verbose)
-    return md
+    print("MD Driver:             \t {}".format(md.description))
+    print("Total simulation time: \t {} seconds".format(md.total_simulation_time))
+    print("Mean time per batch:   \t {} ms".format(md.mean_batch_time))
+    print("Average time per step: \t {} ms\n".format(md.mean_step_time))
+    # TODO: persist_step_times()
 
 
-def run_jaxmd(atoms: Atoms, dt: float, steps: int, batch_size: int, write_stress: bool, verbose: bool) -> MdDriver:
-    md = JaxmdNeighborListNVE(atoms, dt, batch_size)
-    md.run(steps, write_stress, verbose)
-    return md
-
-
-def run_asax(atoms: Atoms, dt: float, steps: int, batch_size: int, write_stress: bool, verbose: bool) -> MdDriver:
-    pass
-
-
-
-atoms = jax_utils.initialize_cubic_argon(multiplier=8)
+atoms = jax_utils.initialize_cubic_argon(multiplier=2)
 dt = 5 * units.fs
-steps = 2500
+steps = 1000
 batch_size = 5
 write_stress = False
 verbose = False
 
-# ase = run_ase(atoms, dt, steps, batch_size, write_stress, verbose)
+run(AseNeighborListNve, atoms, dt, steps, batch_size, write_stress, verbose)
+run(JaxmdNeighborListNVE, atoms, dt, steps, batch_size, write_stress, verbose)
+run(AsaxNeighborListNve, atoms, dt, steps, batch_size, write_stress, verbose)
 
-# jaxmd = run_jaxmd(atoms, dt, steps, batch_size, write_stress, True)
-# print("Total simulation time: {}".format(jaxmd.total_simulation_time))
-# print("Average ms/batch: {}".format(np.mean(jaxmd.batch_times)))
-# print("Average ms/step: {}".format(np.mean(jaxmd.step_times)))
