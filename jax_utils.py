@@ -85,7 +85,7 @@ def block_and_dispatch(properties: Tuple[DeviceArray, ...]):
     return [None if p is None else np.array(p) for p in properties]
 
 
-def initialize_cubic_argon(multiplier: List[int] = 5, sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0, temperature_K: int = 30) -> Atoms:
+def initialize_cubic_argon(multiplier=5, sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0, temperature_K: int = 30) -> Atoms:
     atoms = bulk("Ar", cubic=True) * [multiplier, multiplier, multiplier]
     MaxwellBoltzmannDistribution(atoms, temperature_K=temperature_K)
     Stationary(atoms)

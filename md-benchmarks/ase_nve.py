@@ -1,36 +1,25 @@
-from asax.jax_utils import initialize_cubic_argon
-from ase import units
+from md_driver import MdDriver
 from ase.atoms import Atoms
 from ase.md import VelocityVerlet
 import time
-from ase.calculators.lj import LennardJones as aseLJ
 
-class AseNve:
-    step_time_ms: float
 
-    def __init__(self, atoms: Atoms, dt: float):
-        self.atoms = atoms
-        # TODO: Implement dt parameter
+class AseNeighborListNve(MdDriver):
+
+    def __init__(self, atoms: Atoms, dt: float, batch_size: int):
+        super().__init__(atoms, dt, batch_size)
         self.dyn = VelocityVerlet(atoms, timestep=dt)
 
-    def run(self, steps: int):
-        self.step_time_ms = None
-        start = time.monotonic()
-        self.dyn.run(steps)
-        elapsed = round(time.monotonic() - start, 2)
-        self.step_time_ms = round(elapsed/steps * 1000, 2)
+    def _run_md(self, steps: int, write_stress: bool, verbose: bool):
+        i = 0
 
+        while i < steps:
+            i += self.batch_size
+            batch_start_time = time.monotonic()
+            self.dyn.run(self.batch_size)
 
-steps = 10000
-atoms = initialize_cubic_argon()
+            # elapsed time for simulating the last batch (in milliseconds)
+            self._batch_times += [round((time.monotonic() - batch_start_time) * 1000, 2)]
 
-md = AseNve(atoms, 5.0 * units.fs)
-md.run(steps)
-
-print("{} steps: {} ms/step".format(steps, md.step_time_ms))
-
-# 100 steps: 160.7 ms/step
-# 500 steps: 73.4 ms/step
-# 1000 steps: 62.19 ms/step
-# 2000 steps: 62.81 ms/step
-# 10.000 steps: 
+            if verbose:
+                print("Steps {}/{} took {} ms".format(i, steps, self.batch_times[-1]))
