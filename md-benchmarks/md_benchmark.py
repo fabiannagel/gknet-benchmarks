@@ -8,7 +8,7 @@ import jax_utils
 import pickle
 from jax import config
 config.update("jax_enable_x64", True)
-# TODO:
+
 
 def persist_step_times(md: MdDriver):
     with open(md.description, 'wb') as handle:
@@ -17,15 +17,16 @@ def persist_step_times(md: MdDriver):
 
 def run(clazz: Type[MdDriver], atoms: Atoms, dt: float, steps: int, batch_size: int, write_stress: bool, verbose: bool):
     md = clazz(atoms, dt, batch_size)
+    print("MD Driver:             \t {} (n = {})".format(md.description, len(atoms)))
+    print("Benchmark in progress...")
     md.run(steps, write_stress, verbose)
-    print("MD Driver:             \t {}".format(md.description))
     print("Total simulation time: \t {} seconds".format(md.total_simulation_time))
     print("Mean time per batch:   \t {} ms".format(md.mean_batch_time))
     print("Average time per step: \t {} ms\n".format(md.mean_step_time))
     # TODO: persist_step_times()
 
 
-atoms = jax_utils.initialize_cubic_argon(multiplier=2)
+atoms = jax_utils.initialize_cubic_argon(multiplier=14)
 dt = 5 * units.fs
 steps = 1000
 batch_size = 5
