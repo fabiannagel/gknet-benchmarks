@@ -36,9 +36,12 @@ class JaxmdNeighborListNVE(MdDriver):
         super().__init__(atoms, dt, batch_size)
         self.dr_threshold = dr_threshold
 
-        # TODO: Convert these to jnp.array due to NL issues?
-        self.box = atoms.get_cell().array
-        self.R = atoms.get_positions()
+        self.box = jnp.float32(atoms.get_cell().array)
+        # TODO: jnp.float32 causes NL indexing error with n = 2048 (multiplier = 8)
+        self.R = jnp.array(atoms.get_positions())
+
+        # self.box = atoms.get_cell().array
+        # self.R = atoms.get_positions()
         self._initialize()
 
     @property
@@ -124,6 +127,10 @@ class JaxmdNeighborListNVE(MdDriver):
 
             if verbose:
                 print("Steps {}/{} took {} ms".format(i, steps, self.batch_times[-1]))
+
+        state.position.block_until_ready()
+        state.mass.block_until_ready()
+        state.force.block_until_ready()
 
 
 
