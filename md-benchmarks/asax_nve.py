@@ -1,32 +1,36 @@
-from ase import units, Atoms
+from md_driver import MdDriver
 from ase.md import VelocityVerlet
-import asax
-from ase.build import bulk
-import time
+from ase.atoms import Atoms
+from asax.lj import LennardJones
 from ase.calculators.lj import LennardJones as aseLJ
-
-sigma = 2.0
-epsilon = 1.5
-rc = 10.0
-ro = 6.0
+import time
 
 
-def run_nve(steps: int, timestep):
-    start = time.monotonic()
+class AsaxNeighborListNve(MdDriver):
 
-    atoms = bulk("Ar", cubic=True) * [5, 5, 5]
-    atoms.set_cell(1.05 * atoms.get_cell(), scale_atoms=True)
-    atoms.calc = asax.lj.LennardJones(epsilon=epsilon, sigma=sigma, rc=rc, ro=ro)
+    def __init__(self, atoms: Atoms, dt: float, batch_size: int):
+        super().__init__(atoms, dt, batch_size)
+        sigma = 2.0
+        epsilon = 1.5
+        rc = 10.0
+        ro = 6.0
+        self.atoms.calc = LennardJones(epsilon, sigma, rc, ro, stress=False)
+        self.dyn = VelocityVerlet(atoms, timestep=dt)
 
-    dyn = VelocityVerlet(atoms, timestep=timestep)
-    dyn.run(steps)
-    elapsed_seconds = round(time.monotonic() - start, 2)
-    mean_step_time_ms = round((elapsed_seconds / steps) * 1000, 2)
+    @property
+    def description(self) -> str:
+        return "ASAX"
 
-    print("{} steps".format(steps))
-    print("{} seconds total".format(elapsed_seconds))
-    print("{} ms/step".format(mean_step_time_ms))
-    return steps, elapsed_seconds, mean_step_time_ms
+    def _run_md(self, steps: int, write_stress: bool, verbose: bool):
+        i = 0
 
+        while i < steps:
+            i += self.batch_size
+            batch_start_time = time.monotonic()
+            self.dyn.run(self.batch_size)
 
-run_nve(10000, timestep=5.0 * units.fs)
+            # elapsed time for simulating the last batch (in milliseconds)
+            self._batch_times += [round((time.monotonic() - batch_start_time) * 1000, 2)]
+
+            if verbose:
+                print("Steps {}/{} took {} ms".format(i, steps, self.batch_times[-1]))

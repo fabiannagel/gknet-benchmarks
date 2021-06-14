@@ -12,13 +12,9 @@ from jax_md import space, energy
 from jax_md.energy import NeighborFn, NeighborList
 from jax_md.space import DisplacementFn
 from jax_md.nn import InitFn
-# from periodic_general import periodic_general
-import time
 import jax.numpy as jnp
 from jax import jit, random
-from jax.config import config
-config.update("jax_enable_x64", False)
-# config.update("jax_log_compiles", 1)
+
 
 class BapstGNN(Calculator):
     _short_description = "GNN Neighbor List"
@@ -35,7 +31,7 @@ class BapstGNN(Calculator):
 
     # TODO: Create lightweight type for LJ parameters?
     def __init__(self, box: jnp.ndarray, n: int, R: jnp.ndarray, r_cutoff: float, stress: bool, stresses: bool, jit: bool, displacement_fn: Optional[Callable], skip_initialization=False):
-        super().__init__(box, n, R, stress)
+        super().__init__(box, n, jnp.float32(R), stress)
         self._r_cutoff = r_cutoff
         self._stress = stress
         self._stresses = stresses
