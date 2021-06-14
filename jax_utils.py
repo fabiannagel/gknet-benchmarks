@@ -3,6 +3,7 @@ from typing import Callable, Dict, Tuple, List
 import numpy as np
 from ase.atoms import Atoms
 from ase.build import bulk
+import ase.io
 from ase.calculators.lj import LennardJones
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 from jax import vmap, random
@@ -94,10 +95,18 @@ def initialize_cubic_argon(multiplier=5, sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0
     return atoms
 
 
+def read_cubic_argon(file_name="geometry.in"):
+    atoms = ase.io.read(file_name, format="aims")
+    atoms.calc = LennardJones(sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0, smooth=True)
+    return atoms
+
+
+def write_cubic_argon(file_name="geometry.in", multiplier=5):
+    atoms = initialize_cubic_argon(multiplier)
+    ase.io.write(file_name, atoms, velocities=True, format="aims")
 
 
 ## old stuff here
-
 
 class XlaMemoryFlag(Enum):
     XLA_PYTHON_CLIENT_PREALLOCATE = "XLA_PYTHON_CLIENT_PREALLOCATE"
