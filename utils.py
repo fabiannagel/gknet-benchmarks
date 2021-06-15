@@ -9,6 +9,7 @@ import pickle
 from itertools import groupby
 from ase.build import bulk
 from ase.atoms import Atoms
+import time
 
 legend_size = 16
 
@@ -34,6 +35,10 @@ def generate_cubic_system_sizes(start: int, stop: int, step=100) -> List[int]:
         system_sizes.append(len(atoms))
 
     return sorted(set(system_sizes))
+
+
+def get_milliseconds(start_time: float, round_decimals=2) -> float:
+    return round((time.monotonic() - start_time) * 1000, round_decimals)
 
 
 def create_output_path(runs: int) -> str:
@@ -104,7 +109,6 @@ def load_super_cells_from_pickle(file_path: str) -> List[Atoms]:
 
 def computed_all_super_cells(results: List[Result], super_cells: Set[int]):
     pass
-
 
 
 def plot_runtimes(results: List[Result], 
@@ -347,8 +351,6 @@ def label_converter(calc_description: str) -> str:
     print(calc_description)
 
 
-
-
 def extract_mean_runtimes(results: List[Result]):
     """
     Should return raw data for plotting:
@@ -383,4 +385,4 @@ def extract_mean_runtimes(results: List[Result]):
     if len(set(performed_runs)) > 1:
         raise RuntimeError("Inconsistent number of runs in results")
 
-    return data        
+    return data
