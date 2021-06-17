@@ -71,7 +71,7 @@ class MdDriver(ABC):
     def _run_md(self, steps: int, write_stress: bool, verbose: bool):
         pass
 
-    def run(self, steps: int, write_stress=False, verbose=False):
+    def run(self, steps: int):
         if steps % self.batch_size != 0:
             raise ValueError("steps need to be dividable by batch_size")
 
@@ -80,5 +80,5 @@ class MdDriver(ABC):
 
         self._batch_times = []
         start = time.monotonic()
-        self._run_md(steps, write_stress, verbose)
+        self._run_md(steps, write_stress=False, verbose=False)
         self._total_simulation_time = round(time.monotonic() - start, 2)

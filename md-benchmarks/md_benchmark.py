@@ -53,6 +53,7 @@ def run_md_driver(md_driver: Type[MdDriver], atoms: Atoms, dt: float, steps: int
 def perform_runs(md_driver: Type[MdDriver], md_driver_key: str, atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int, *args, **kwargs):
     if md_driver_key in oom_md_drivers:
         print("{} went OOM before. Skipping...".format(md_driver_key))
+        return
 
     total_simulation_seconds = []
     mean_step_milliseconds = []
@@ -87,12 +88,13 @@ def run_asax(atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int):
 
 
 # super_cells = list(filter(lambda atoms: len(atoms) >= 1008, utils.load_super_cells("../super_cells")))
-super_cells = utils.load_super_cells("../super_cells")
-print(super_cells)
+# super_cells = utils.load_super_cells("../super_cells")[7:9]
+super_cells = list(filter(lambda atoms: len(atoms) >= 12000, utils.load_super_cells("../super_cells")))
+print([len(atoms) for atoms in super_cells])
 
 steps = 100
 batch_size = 5
-runs = 2
+runs = 1
 dt = 5 * units.fs
 
 results = get_results_dict(steps, batch_size, runs, dt)
@@ -101,7 +103,7 @@ oom_md_drivers: List[str] = []
 for atoms in super_cells:
     print("\nn = {}".format(len(atoms)))
 
-    run_ase(atoms, dt, steps, batch_size, runs)
+    # run_ase(atoms, dt, steps, batch_size, runs)
     run_jax_md(atoms, dt, steps, batch_size, runs, jit_force_fn=False)
     run_jax_md(atoms, dt, steps, batch_size, runs, jit_force_fn=True)
     run_asax(atoms, dt, steps, batch_size, runs)
