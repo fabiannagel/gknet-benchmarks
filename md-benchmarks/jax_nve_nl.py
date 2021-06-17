@@ -81,7 +81,6 @@ class JaxmdNeighborListNve(MdDriver):
     def _setup_nve(self, energy_fn: EnergyFn, shift_fn: ShiftFn) -> Tuple[NVEState, ApplyFn]:
         energy_or_force_fn = energy_fn
         if self.jit_force_fn:
-            print("Feeding jitted force_fn into NVE")
             energy_or_force_fn = jit(quantity.force(energy_fn))
 
         _, apply_fn = simulate.nve(energy_or_force_fn, shift_fn, dt=self.dt)
