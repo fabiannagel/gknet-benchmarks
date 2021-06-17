@@ -52,7 +52,7 @@ def run_md_driver(md_driver: Type[MdDriver], atoms: Atoms, dt: float, steps: int
 
 def perform_runs(md_driver: Type[MdDriver], md_driver_key: str, atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int, *args, **kwargs):
     if md_driver_key in oom_md_drivers:
-        print("{} went OOM before. Skipping...".format(md_driver_key))
+        print("{:<70} went OOM before. Skipping...".format(md_driver_key))
         return
 
     total_simulation_seconds = []
@@ -60,7 +60,7 @@ def perform_runs(md_driver: Type[MdDriver], md_driver_key: str, atoms: Atoms, dt
 
     try:
         for i in range(runs):
-            print("{:<60} \t Performing run {}/{}".format(md_driver_key, i+1, runs))
+            print("{:<70} Performing run {}/{}".format(md_driver_key, i+1, runs))
 
             md = run_md_driver(md_driver, atoms, dt, steps, batch_size, *args, **kwargs)
             total_simulation_seconds += [md.total_simulation_time]
@@ -87,14 +87,12 @@ def run_asax(atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int):
     perform_runs(AsaxNeighborListNve, key, atoms, dt, steps, batch_size, runs)
 
 
-# super_cells = list(filter(lambda atoms: len(atoms) >= 1008, utils.load_super_cells("../super_cells")))
-# super_cells = utils.load_super_cells("../super_cells")[7:9]
-super_cells = list(filter(lambda atoms: len(atoms) >= 12000, utils.load_super_cells("../super_cells")))
-print([len(atoms) for atoms in super_cells])
+super_cells = list(filter(lambda atoms: len(atoms) >= 1000, utils.load_super_cells("../super_cells")))
+print("n = {}".format([len(atoms) for atoms in super_cells]))
 
-steps = 100
+steps = 50
 batch_size = 5
-runs = 1
+runs = 2
 dt = 5 * units.fs
 
 results = get_results_dict(steps, batch_size, runs, dt)
