@@ -9,13 +9,14 @@ import time
 
 class AsaxNeighborListNve(MdDriver):
 
-    def __init__(self, atoms: Atoms, dt: float, batch_size: int):
+    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom):
         super().__init__(atoms, dt, batch_size)
+        self.dr_threshold = dr_threshold
         sigma = 2.0
         epsilon = 1.5
         rc = 10.0
         ro = 6.0
-        self.atoms.calc = LennardJones(epsilon, sigma, rc, ro, stress=False, dr_threshold=1 * units.Angstrom)
+        self.atoms.calc = LennardJones(epsilon, sigma, rc, ro, stress=False, dr_threshold=self.dr_threshold)
         self.dyn = VelocityVerlet(atoms, timestep=dt)
 
     @property
