@@ -45,14 +45,11 @@ def perform_runs(md_driver: Type[MdDriver], atoms: Atoms, dt: float, steps: int,
     return total_simulation_times, mean_step_times
 
 
-super_cells = utils.load_super_cells("../super_cells")
+super_cells = list(filter(lambda atoms: len(atoms) > 500, utils.load_super_cells("../super_cells")))
 steps = 1000
 batch_size = 5
 runs = 3
 dt = 5 * units.fs
-write_stress = False
-verbose = False
-
 results = get_results_dict(steps, batch_size, runs, dt)
 
 for md_driver in [AseNeighborListNve, JaxmdNeighborListNve, AsaxNeighborListNve]:
