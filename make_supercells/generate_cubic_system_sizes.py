@@ -37,7 +37,7 @@ def make_cubic_supercells(n_start: int, n_stop: int, n_step: int, temperature_K:
     return supercells
 
 
-def create_thermalized_trajectories(n_start: int, n_stop: int, n_step=1000, temperature_K=30):
+def create_thermalized_trajectories(n_start: int, n_stop: int, n_step=100, temperature_K=30):
     super_cells = make_cubic_supercells(n_start, n_stop, n_step, temperature_K)
 
     for atoms in super_cells:

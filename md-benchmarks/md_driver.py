@@ -73,7 +73,10 @@ class MdDriver(ABC):
 
     def run(self, steps: int, write_stress=False, verbose=False):
         if steps % self.batch_size != 0:
-            raise ValueError("Number of steps need to be dividable by batch_size")
+            raise ValueError("steps need to be dividable by batch_size")
+
+        if steps == 0 or self.batch_size == 0:
+            raise ValueError("steps and batch_size cannot be 0")
 
         self._batch_times = []
         start = time.monotonic()

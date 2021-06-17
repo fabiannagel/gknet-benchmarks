@@ -1,3 +1,5 @@
+from ase.calculators.lj import LennardJones
+
 import jax_utils
 from md_driver import MdDriver
 import time
@@ -17,7 +19,7 @@ from jax_utils import DisplacementFn, EnergyFn, NVEState
 config.update("jax_enable_x64", False)
 
 
-class JaxmdNeighborListNVE(MdDriver):
+class JaxmdNeighborListNve(MdDriver):
     displacement_fn: DisplacementFn
     shift_fn: ShiftFn
     energy_fn: EnergyFn
@@ -61,6 +63,10 @@ class JaxmdNeighborListNVE(MdDriver):
         epsilon = 1.5
         rc = 10.0
         ro = 6.0
+
+        # we require a calculator to obtain the initial NVEState
+        self.atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=rc, ro=ro, smooth=True)
+
         normalized_ro = ro / sigma
         normalized_rc = rc / sigma
         neighbor_fn, energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, self.box,

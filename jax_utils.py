@@ -86,7 +86,10 @@ def block_and_dispatch(properties: Tuple[DeviceArray, ...]):
     return [None if p is None else np.array(p) for p in properties]
 
 
-def get_initial_nve_state(self, atoms: Atoms) -> NVEState:
+def get_initial_nve_state(atoms: Atoms) -> NVEState:
+    if atoms.calc is None:
+        raise RuntimeError("Atoms must have a calculator")
+
     R = atoms.get_positions()
     V = atoms.get_velocities()
     forces = atoms.get_forces()
