@@ -1,22 +1,25 @@
+from ase.calculators.lj import LennardJones
+
+import jax_utils
 from md_driver import MdDriver
 import time
 from typing import List, Tuple, Dict, Callable
 
 import numpy as np
 from ase import units, Atoms
-from jax import jit, lax
+from jax import jit, lax, grad
 from jax.config import config
 import jax.numpy as jnp
-from jax_md import simulate, space, energy
+from jax_md import simulate, space, energy, quantity
 from jax_md.energy import NeighborFn, NeighborList
-from jax_md.simulate import ApplyFn, ShiftFn
+from jax_md.simulate import ApplyFn, ShiftFn, Array
 
 from jax_utils import DisplacementFn, EnergyFn, NVEState
 
 config.update("jax_enable_x64", False)
 
 
-class JaxmdNeighborListNVE(MdDriver):
+class JaxmdNeighborListNve(MdDriver):
     displacement_fn: DisplacementFn
     shift_fn: ShiftFn
     energy_fn: EnergyFn
@@ -25,6 +28,7 @@ class JaxmdNeighborListNVE(MdDriver):
 
     initial_state: NVEState
     initial_neighbor_list: NeighborList
+    final_state: NVEState
 
     """
         TODO:
@@ -32,16 +36,12 @@ class JaxmdNeighborListNVE(MdDriver):
         - Refactor private fields.    
     """
 
-    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom):
+    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom, jit_force_fn=False):
         super().__init__(atoms, dt, batch_size)
         self.dr_threshold = dr_threshold
-
+        self.jit_force_fn = jit_force_fn
         self.box = jnp.float32(atoms.get_cell().array)
-        # TODO: jnp.float32 causes NL indexing error with n = 2048 (multiplier = 8)
-        self.R = jnp.array(atoms.get_positions())
-
-        # self.box = atoms.get_cell().array
-        # self.R = atoms.get_positions()
+        self.R = jnp.float64(atoms.get_positions())     # TODO: float32 causes NL indexing errors
         self._initialize()
 
     @property
@@ -63,6 +63,10 @@ class JaxmdNeighborListNVE(MdDriver):
         epsilon = 1.5
         rc = 10.0
         ro = 6.0
+
+        # we require a calculator to obtain the initial NVEState
+        self.atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=rc, ro=ro, smooth=True)
+
         normalized_ro = ro / sigma
         normalized_rc = rc / sigma
         neighbor_fn, energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, self.box,
@@ -75,15 +79,12 @@ class JaxmdNeighborListNVE(MdDriver):
         return neighbor_fn, jit(energy_fn)
 
     def _setup_nve(self, energy_fn: EnergyFn, shift_fn: ShiftFn) -> Tuple[NVEState, ApplyFn]:
-        _, apply_fn = simulate.nve(energy_fn, shift_fn, dt=self.dt)
-        return self._get_initial_nve_state(), apply_fn
+        energy_or_force_fn = energy_fn
+        if self.jit_force_fn:
+            energy_or_force_fn = jit(quantity.force(energy_fn))
 
-    def _get_initial_nve_state(self) -> NVEState:
-        R = self.atoms.get_positions()
-        V = self.atoms.get_velocities()
-        forces = self.atoms.get_forces()
-        masses = self.atoms.get_masses()[0]
-        return NVEState(R, V, forces, masses)
+        _, apply_fn = simulate.nve(energy_or_force_fn, shift_fn, dt=self.dt)
+        return jax_utils.get_initial_nve_state(self.atoms), apply_fn
 
     def _step_fn(self, i, state):
         state, neighbors = state
@@ -108,29 +109,20 @@ class JaxmdNeighborListNVE(MdDriver):
         i = 0
 
         while i < steps:
-            i += self.batch_size
-
             batch_start_time = time.monotonic()
             state, neighbors = lax.fori_loop(0, self.batch_size, step_fn, (state, neighbors))
 
             if neighbors.did_buffer_overflow:
                 neighbors = self.neighbor_fn(state.position)
-                if verbose:
-                    print("Steps {}/{}: Neighbor list overflow, recomputing...".format(i, steps))
+                print("Steps {}/{}: Neighbor list overflow, recomputing...".format(i, steps))
                 continue
-
-            # if write_stress:
-            #     idx = int(i / self.batch_size - 1)
-            #     forces_buffer[idx] = state.force
 
             self._batch_times += [round((time.monotonic() - batch_start_time) * 1000, 2)]
 
             if verbose:
                 print("Steps {}/{} took {} ms".format(i, steps, self.batch_times[-1]))
+            i += self.batch_size
 
         state.position.block_until_ready()
         state.mass.block_until_ready()
         state.force.block_until_ready()
-
-
-

@@ -1,3 +1,5 @@
+from ase.calculators.lj import LennardJones
+
 from md_driver import MdDriver
 from ase.atoms import Atoms
 from ase.md import VelocityVerlet
@@ -8,6 +10,11 @@ class AseNeighborListNve(MdDriver):
 
     def __init__(self, atoms: Atoms, dt: float, batch_size: int):
         super().__init__(atoms, dt, batch_size)
+        sigma = 2.0
+        epsilon = 1.5
+        rc = 10.0
+        ro = 6.0
+        self.atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=rc, ro=ro, smooth=True)
         self.dyn = VelocityVerlet(atoms, timestep=dt)
 
     @property

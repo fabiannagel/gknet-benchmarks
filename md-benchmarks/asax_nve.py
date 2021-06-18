@@ -1,20 +1,22 @@
+from ase import units
+
 from md_driver import MdDriver
 from ase.md import VelocityVerlet
 from ase.atoms import Atoms
 from asax.lj import LennardJones
-from ase.calculators.lj import LennardJones as aseLJ
 import time
 
 
 class AsaxNeighborListNve(MdDriver):
 
-    def __init__(self, atoms: Atoms, dt: float, batch_size: int):
+    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom):
         super().__init__(atoms, dt, batch_size)
+        self.dr_threshold = dr_threshold
         sigma = 2.0
         epsilon = 1.5
         rc = 10.0
         ro = 6.0
-        self.atoms.calc = LennardJones(epsilon, sigma, rc, ro, stress=False)
+        self.atoms.calc = LennardJones(epsilon, sigma, rc, ro, stress=False, dr_threshold=self.dr_threshold)
         self.dyn = VelocityVerlet(atoms, timestep=dt)
 
     @property
@@ -23,7 +25,6 @@ class AsaxNeighborListNve(MdDriver):
 
     def _run_md(self, steps: int, write_stress: bool, verbose: bool):
         i = 0
-
         while i < steps:
             i += self.batch_size
             batch_start_time = time.monotonic()

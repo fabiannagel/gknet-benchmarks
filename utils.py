@@ -1,6 +1,8 @@
+import ase
 from vibes.helpers.supercell import make_cubic_supercell
 from calculators.calculator import Calculator
 import os
+from os import path
 from typing import Callable, Iterable, List, Set, Tuple
 from calculators.result import Result
 import matplotlib.pyplot as plt
@@ -9,6 +11,7 @@ import pickle
 from itertools import groupby
 from ase.build import bulk
 from ase.atoms import Atoms
+import time
 
 legend_size = 16
 
@@ -36,6 +39,10 @@ def generate_cubic_system_sizes(start: int, stop: int, step=100) -> List[int]:
     return sorted(set(system_sizes))
 
 
+def get_milliseconds(start_time: float, round_decimals=2) -> float:
+    return round((time.monotonic() - start_time) * 1000, round_decimals)
+
+
 def create_output_path(runs: int) -> str:
     results_dir = "results/{}_runs/".format(runs)
     output_path = os.path.join(os.getcwd(), results_dir)
@@ -45,6 +52,16 @@ def create_output_path(runs: int) -> str:
 
     os.makedirs(output_path, exist_ok=True)
     return output_path
+
+
+def persist(obj, file_name: str):
+    with open(file_name, 'wb') as handle:
+        pickle.dump(obj, handle)
+
+
+def load(file_name: str):
+    with open(file_name, 'rb') as handle:
+        return pickle.load(handle)
 
 
 def persist_results(results: List[Result], runs: int, descriptor=''):  
@@ -96,15 +113,10 @@ def load_calculators_from_pickle(file_path: str) -> List[Calculator]:
     return calculators
 
 
-def load_super_cells_from_pickle(file_path: str) -> List[Atoms]:
-    with open(file_path, 'rb') as handle:
-        super_cells = pickle.load(handle)
-    return super_cells
-
-
-def computed_all_super_cells(results: List[Result], super_cells: Set[int]):
-    pass
-
+def load_super_cells(base_path: str) -> List[Atoms]:
+    # TODO: Create super cells if not available at this path.
+    files = [path.join(base_path, f) for f in os.listdir(base_path) if f.endswith(".in")]
+    return sorted([ase.io.read(t) for t in files if path.isfile(t)], key=lambda atoms: len(atoms))
 
 
 def plot_runtimes(results: List[Result], 
@@ -347,8 +359,6 @@ def label_converter(calc_description: str) -> str:
     print(calc_description)
 
 
-
-
 def extract_mean_runtimes(results: List[Result]):
     """
     Should return raw data for plotting:
@@ -383,4 +393,4 @@ def extract_mean_runtimes(results: List[Result]):
     if len(set(performed_runs)) > 1:
         raise RuntimeError("Inconsistent number of runs in results")
 
-    return data        
+    return data

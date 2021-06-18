@@ -28,6 +28,9 @@ class MdDriver(ABC):
         Returns step times as batch_times / batch_size.
         Shape adjusted value repetition such that len(step_times) = steps.
         """
+        # TODO: Verify that there are no rounding errors here. alternative:
+        # step_times = list(map(lambda bt: bt / float(self.batch_size), self._batch_times))
+
         step_times = map(lambda bt: bt / self.batch_size, self._batch_times)
         padded_step_times = map(lambda st: itertools.repeat(st, self.batch_size), step_times)
         merged_step_times = itertools.chain(*padded_step_times)
@@ -68,11 +71,14 @@ class MdDriver(ABC):
     def _run_md(self, steps: int, write_stress: bool, verbose: bool):
         pass
 
-    def run(self, steps: int, write_stress=False, verbose=False):
+    def run(self, steps: int):
         if steps % self.batch_size != 0:
-            raise ValueError("Number of steps need to be dividable by batch_size")
+            raise ValueError("steps need to be dividable by batch_size")
+
+        if steps == 0 or self.batch_size == 0:
+            raise ValueError("steps and batch_size cannot be 0")
 
         self._batch_times = []
         start = time.monotonic()
-        self._run_md(steps, write_stress, verbose)
+        self._run_md(steps, write_stress=False, verbose=False)
         self._total_simulation_time = round(time.monotonic() - start, 2)
