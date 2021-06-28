@@ -1,5 +1,5 @@
 import ase
-from vibes.helpers.supercell import make_cubic_supercell
+# from vibes.helpers.supercell import make_cubic_supercell
 from calculators.calculator import Calculator
 import os
 from os import path
@@ -28,15 +28,15 @@ def generate_system_sizes(start: int, stop: int, step=100) -> List[int]:
     return list(range(start, stop+step, step))
 
 
-def generate_cubic_system_sizes(start: int, stop: int, step=100) -> List[int]:
-    system_sizes = []
-
-    for n in range(start, stop+step, step):
-        atoms = bulk("Ar", cubic=True)
-        atoms, _ = make_cubic_supercell(atoms, target_size=n)
-        system_sizes.append(len(atoms))
-
-    return sorted(set(system_sizes))
+# def generate_cubic_system_sizes(start: int, stop: int, step=100) -> List[int]:
+#     system_sizes = []
+#
+#     for n in range(start, stop+step, step):
+#         atoms = bulk("Ar", cubic=True)
+#         atoms, _ = make_cubic_supercell(atoms, target_size=n)
+#         system_sizes.append(len(atoms))
+#
+#     return sorted(set(system_sizes))
 
 
 def get_milliseconds(start_time: float, round_decimals=2) -> float:

@@ -10,7 +10,7 @@ from ase import units, Atoms
 from jax import jit, lax, grad
 from jax.config import config
 import jax.numpy as jnp
-from jax_md import simulate, space, energy, quantity
+from jax_md import simulate, space, energy, quantity, util
 from jax_md.energy import NeighborFn, NeighborList
 from jax_md.simulate import ApplyFn, ShiftFn, Array
 
@@ -30,18 +30,11 @@ class JaxmdNeighborListNve(MdDriver):
     initial_neighbor_list: NeighborList
     final_state: NVEState
 
-    """
-        TODO:
-        - Seems like the neighbor list is breaking for small systems (multiplier < 8). This is also happening with the previous commit.
-        - Refactor private fields.    
-    """
-
-    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom, jit_force_fn=False):
-        super().__init__(atoms, dt, batch_size)
-        self.dr_threshold = dr_threshold
-        self.jit_force_fn = jit_force_fn
+    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom):
+        super().__init__(atoms, jnp.float32(dt), batch_size)
+        self.dr_threshold = jnp.float32(dr_threshold)
         self.box = jnp.float32(atoms.get_cell().array)
-        self.R = jnp.float64(atoms.get_positions())     # TODO: float32 causes NL indexing errors
+        self.R = jnp.float32(atoms.get_positions())
         self._initialize()
 
     @property
@@ -51,7 +44,7 @@ class JaxmdNeighborListNve(MdDriver):
     def _initialize(self):
         self.displacement_fn, self.shift_fn = self._setup_space()
         self.neighbor_fn, self.energy_fn = self._setup_potential(self.displacement_fn)
-        self.initial_neighbor_list = self.neighbor_fn(self.R)
+        self.initial_neighbor_list = self.neighbor_fn(self.R, extra_capacity=100)
         self.initial_state, self.apply_fn = self._setup_nve(self.energy_fn, self.shift_fn)
 
     def _setup_space(self) -> Tuple[DisplacementFn, ShiftFn]:
@@ -59,38 +52,27 @@ class JaxmdNeighborListNve(MdDriver):
         return jit(displacement_fn), jit(shift_fn)
 
     def _setup_potential(self, displacement_fn: DisplacementFn) -> Tuple[NeighborFn, EnergyFn]:
-        sigma = 2.0
-        epsilon = 1.5
-        rc = 10.0
-        ro = 6.0
-
         # we require a calculator to obtain the initial NVEState
-        self.atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=rc, ro=ro, smooth=True)
+        lj_parameters = jax_utils.get_argon_lennard_jones_parameters()
+        self.atoms.calc = LennardJones(sigma=lj_parameters['sigma'], epsilon=lj_parameters['epsilon'], rc=lj_parameters['rc'], ro=lj_parameters['ro'], smooth=True)
 
-        normalized_ro = ro / sigma
-        normalized_rc = rc / sigma
+        normalized_ro = lj_parameters['ro'] / lj_parameters['sigma']
+        normalized_rc = lj_parameters['rc'] / lj_parameters['sigma']
+
+        # TODO: use same unstrained potential as asax
         neighbor_fn, energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, self.box,
-                                                                    sigma=sigma,
-                                                                    epsilon=epsilon,
+                                                                    sigma=lj_parameters['sigma'],
+                                                                    epsilon=lj_parameters['epsilon'],
                                                                     r_onset=normalized_ro,
                                                                     r_cutoff=normalized_rc,
                                                                     dr_threshold=self.dr_threshold)
+                                                                    # per_particle=True)
 
         return neighbor_fn, jit(energy_fn)
 
     def _setup_nve(self, energy_fn: EnergyFn, shift_fn: ShiftFn) -> Tuple[NVEState, ApplyFn]:
-        energy_or_force_fn = energy_fn
-        if self.jit_force_fn:
-            energy_or_force_fn = jit(quantity.force(energy_fn))
-
-        _, apply_fn = simulate.nve(energy_or_force_fn, shift_fn, dt=self.dt)
+        _, apply_fn = simulate.nve(energy_fn, shift_fn, dt=self.dt)
         return jax_utils.get_initial_nve_state(self.atoms), apply_fn
-
-    def _step_fn(self, i, state):
-        state, neighbors = state
-        neighbors = self.neighbor_fn(state.position, neighbors)
-        state = self.apply_fn(state, neighbor=neighbors)
-        return state, neighbors
 
     def _get_step_fn(self, neighbor_fn: NeighborFn, apply_fn: ApplyFn):
         def step_fn(i, state):
@@ -101,11 +83,11 @@ class JaxmdNeighborListNve(MdDriver):
 
         return step_fn
 
-    def _run_md(self, steps: int, write_stress: bool, verbose: bool):
+    def _run_md(self, steps: int, verbose: bool):
         step_fn = self._get_step_fn(self.neighbor_fn, self.apply_fn)
-        self._run_md_loop(steps, step_fn, self.initial_state, self.initial_neighbor_list, verbose, write_stress)
+        self._run_md_loop(steps, step_fn, self.initial_state, self.initial_neighbor_list, verbose)
 
-    def _run_md_loop(self, steps: int, step_fn: Callable, state: NVEState, neighbors: NeighborList, verbose: bool, write_stress: bool):
+    def _run_md_loop(self, steps: int, step_fn: Callable, state: NVEState, neighbors: NeighborList, verbose: bool):
         i = 0
 
         while i < steps:

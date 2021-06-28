@@ -68,14 +68,6 @@ def unstrained_neighbor_list_potential(energy_fn, neighbors) -> PotentialFn:
     return potential
 
 
-def get_initial_nve_state(atoms: Atoms) -> NVEState:
-    R = atoms.get_positions()
-    V = atoms.get_velocities()  # å/ ase fs
-    forces = atoms.get_forces()
-    masses = atoms.get_masses()[0]
-    return NVEState(R, V, forces, masses)
-
-
 def block_and_dispatch(properties: Tuple[DeviceArray, ...]):
     for p in properties:
         if p is None:
@@ -90,25 +82,34 @@ def get_initial_nve_state(atoms: Atoms) -> NVEState:
     if atoms.calc is None:
         raise RuntimeError("Atoms must have a calculator")
 
-    R = atoms.get_positions()
-    V = atoms.get_velocities()
-    forces = atoms.get_forces()
-    masses = atoms.get_masses()[0]
+    R = jnp.float32(atoms.get_positions())
+    V = jnp.float32(atoms.get_velocities())      # Å / fs
+    forces = jnp.float32(atoms.get_forces())
+    masses = jnp.float32(atoms.get_masses()[0])
     return NVEState(R, V, forces, masses)
 
+def get_argon_lennard_jones_parameters():
+    return {
+        'sigma': 3.40,
+        'epsilon': 0.01042,
+        'rc': 10.54,
+        'ro': 6.0
+    }
 
-def initialize_cubic_argon(multiplier=5, sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0, temperature_K: int = 30) -> Atoms:
+def initialize_cubic_argon(multiplier=5, temperature_K=30) -> Atoms:
     atoms = bulk("Ar", cubic=True) * [multiplier, multiplier, multiplier]
     MaxwellBoltzmannDistribution(atoms, temperature_K=temperature_K)
     Stationary(atoms)
 
-    atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=rc, ro=ro, smooth=True)
+    lj_parameters = get_argon_lennard_jones_parameters()
+    atoms.calc = LennardJones(sigma=lj_parameters['sigma'], epsilon=lj_parameters['epsilon'], rc=lj_parameters['rc'], ro=lj_parameters['ro'], smooth=True)
     return atoms
 
 
 def read_cubic_argon(file_name="geometry.in"):
     atoms = ase.io.read(file_name, format="aims")
-    atoms.calc = LennardJones(sigma=2.0, epsilon=1.5, rc=10.0, ro=6.0, smooth=True)
+    lj_parameters = get_argon_lennard_jones_parameters()
+    atoms.calc = LennardJones(sigma=lj_parameters['sigma'], epsilon=lj_parameters['epsilon'], rc=lj_parameters['rc'], ro=lj_parameters['ro'], smooth=True)
     return atoms
 
 
@@ -298,6 +299,8 @@ def get_strained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray,
 
 
 def get_unstrained_neighbor_list_potential(energy_fn, neighbors) -> PotentialFn:
+
+    # TODO: neighbors are only wrapped at potential creation time, but never updated in unstrained_potential()! update in asax!
 
     def unstrained_potential(R: space.Array) -> PotentialProperties:
         total_energy_fn = lambda R, *args, **kwargs: jnp.sum(energy_fn(R, *args, **kwargs))

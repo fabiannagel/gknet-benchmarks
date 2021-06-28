@@ -1,5 +1,6 @@
 from ase.calculators.lj import LennardJones
 
+import jax_utils
 from md_driver import MdDriver
 from ase.atoms import Atoms
 from ase.md import VelocityVerlet
@@ -10,18 +11,15 @@ class AseNeighborListNve(MdDriver):
 
     def __init__(self, atoms: Atoms, dt: float, batch_size: int):
         super().__init__(atoms, dt, batch_size)
-        sigma = 2.0
-        epsilon = 1.5
-        rc = 10.0
-        ro = 6.0
-        self.atoms.calc = LennardJones(sigma=sigma, epsilon=epsilon, rc=rc, ro=ro, smooth=True)
+        lj_parameters = jax_utils.get_argon_lennard_jones_parameters()
+        self.atoms.calc = LennardJones(sigma=lj_parameters['sigma'], epsilon=lj_parameters['epsilon'], rc=lj_parameters['rc'], ro=lj_parameters['ro'], smooth=True)
         self.dyn = VelocityVerlet(atoms, timestep=dt)
 
     @property
     def description(self) -> str:
         return "ASE"
 
-    def _run_md(self, steps: int, write_stress: bool, verbose: bool):
+    def _run_md(self, steps: int, verbose: bool):
         i = 0
 
         while i < steps:

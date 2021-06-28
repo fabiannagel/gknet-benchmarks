@@ -1,4 +1,6 @@
 from typing import Type, Dict, List
+
+import jax_utils
 from md_driver import MdDriver
 from ase_nve import AseNeighborListNve
 from jax_nve_nl import JaxmdNeighborListNve
@@ -69,6 +71,7 @@ def perform_runs(md_driver: Type[MdDriver], md_driver_key: str, atoms: Atoms, dt
     except RuntimeError:
         save_oom_event(md_driver_key)
 
+    print(mean_step_milliseconds)
     save_results(md_driver_key, atoms, total_simulation_seconds, mean_step_milliseconds)
 
 
@@ -77,9 +80,9 @@ def run_ase(atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int):
     perform_runs(AseNeighborListNve, key, atoms, dt, steps, batch_size, runs)
 
 
-def run_jax_md(atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int, jit_force_fn=False):
-    key = str(JaxmdNeighborListNve) + ", jit_force_fn={}".format(jit_force_fn)
-    perform_runs(JaxmdNeighborListNve, key, atoms, dt, steps, batch_size, runs, jit_force_fn=jit_force_fn)
+def run_jax_md(atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int):
+    key = str(JaxmdNeighborListNve)
+    perform_runs(JaxmdNeighborListNve, key, atoms, dt, steps, batch_size, runs)
 
 
 def run_asax(atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int):
@@ -87,12 +90,13 @@ def run_asax(atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int):
     perform_runs(AsaxNeighborListNve, key, atoms, dt, steps, batch_size, runs)
 
 
-super_cells = list(filter(lambda atoms: len(atoms) >= 1000, utils.load_super_cells("../super_cells")))
+# super_cells = list(filter(lambda atoms: len(atoms) >= 1000, utils.load_super_cells("../super_cells")))
+super_cells = [jax_utils.initialize_cubic_argon(multiplier=8)]
 print("n = {}".format([len(atoms) for atoms in super_cells]))
 
-steps = 50
+steps = 1000
 batch_size = 5
-runs = 2
+runs = 10
 dt = 5 * units.fs
 
 results = get_results_dict(steps, batch_size, runs, dt)
@@ -102,8 +106,9 @@ for atoms in super_cells:
     print("\nn = {}".format(len(atoms)))
 
     # run_ase(atoms, dt, steps, batch_size, runs)
-    run_jax_md(atoms, dt, steps, batch_size, runs, jit_force_fn=False)
-    run_jax_md(atoms, dt, steps, batch_size, runs, jit_force_fn=True)
+    run_jax_md(atoms, dt, steps, batch_size, runs)
     run_asax(atoms, dt, steps, batch_size, runs)
 
-utils.persist(results, "md_benchmark_results.pickle")
+
+print(results)
+# utils.persist(results, "ase_benchmark_results.pickle")

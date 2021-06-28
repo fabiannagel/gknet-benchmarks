@@ -1,5 +1,6 @@
 from ase import units
 
+import jax_utils
 from md_driver import MdDriver
 from ase.md import VelocityVerlet
 from ase.atoms import Atoms
@@ -12,18 +13,15 @@ class AsaxNeighborListNve(MdDriver):
     def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom):
         super().__init__(atoms, dt, batch_size)
         self.dr_threshold = dr_threshold
-        sigma = 2.0
-        epsilon = 1.5
-        rc = 10.0
-        ro = 6.0
-        self.atoms.calc = LennardJones(epsilon, sigma, rc, ro, stress=False, dr_threshold=self.dr_threshold)
+        lj_parameters = jax_utils.get_argon_lennard_jones_parameters()
+        self.atoms.calc = LennardJones(sigma=lj_parameters['sigma'], epsilon=lj_parameters['epsilon'], rc=lj_parameters['rc'], ro=lj_parameters['ro'], stress=False, dr_threshold=self.dr_threshold)
         self.dyn = VelocityVerlet(atoms, timestep=dt)
 
     @property
     def description(self) -> str:
         return "ASAX"
 
-    def _run_md(self, steps: int, write_stress: bool, verbose: bool):
+    def _run_md(self, steps: int, verbose: bool):
         i = 0
         while i < steps:
             i += self.batch_size

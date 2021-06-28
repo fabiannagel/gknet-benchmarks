@@ -68,7 +68,7 @@ class MdDriver(ABC):
         return np.empty(shape=(buffer_depth, 3, 3))
 
     @abstractmethod
-    def _run_md(self, steps: int, write_stress: bool, verbose: bool):
+    def _run_md(self, steps: int, verbose: bool):
         pass
 
     def run(self, steps: int):
@@ -80,5 +80,5 @@ class MdDriver(ABC):
 
         self._batch_times = []
         start = time.monotonic()
-        self._run_md(steps, write_stress=False, verbose=False)
+        self._run_md(steps, verbose=False)
         self._total_simulation_time = round(time.monotonic() - start, 2)
