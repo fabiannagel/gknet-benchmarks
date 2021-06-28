@@ -30,9 +30,10 @@ class JaxmdNeighborListNve(MdDriver):
     initial_neighbor_list: NeighborList
     final_state: NVEState
 
-    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom):
+    def __init__(self, atoms: Atoms, dt: float, batch_size: int, dr_threshold=1 * units.Angstrom, nl_extra_capacity=100):
         super().__init__(atoms, jnp.float32(dt), batch_size)
         self.dr_threshold = jnp.float32(dr_threshold)
+        self.nl_extra_capacity = jnp.int16(nl_extra_capacity)
         self.box = jnp.float32(atoms.get_cell().array)
         self.R = jnp.float32(atoms.get_positions())
         self._initialize()
@@ -44,7 +45,7 @@ class JaxmdNeighborListNve(MdDriver):
     def _initialize(self):
         self.displacement_fn, self.shift_fn = self._setup_space()
         self.neighbor_fn, self.energy_fn = self._setup_potential(self.displacement_fn)
-        self.initial_neighbor_list = self.neighbor_fn(self.R, extra_capacity=100)
+        self.initial_neighbor_list = self.neighbor_fn(self.R, extra_capacity=self.nl_extra_capacity)
         self.initial_state, self.apply_fn = self._setup_nve(self.energy_fn, self.shift_fn)
 
     def _setup_space(self) -> Tuple[DisplacementFn, ShiftFn]:
@@ -68,7 +69,7 @@ class JaxmdNeighborListNve(MdDriver):
                                                                     dr_threshold=self.dr_threshold)
                                                                     # per_particle=True)
 
-        return neighbor_fn, jit(energy_fn)
+        return neighbor_fn, energy_fn
 
     def _setup_nve(self, energy_fn: EnergyFn, shift_fn: ShiftFn) -> Tuple[NVEState, ApplyFn]:
         _, apply_fn = simulate.nve(energy_fn, shift_fn, dt=self.dt)
