@@ -90,11 +90,11 @@ def run_asax(atoms: Atoms, dt: float, steps: int, batch_size: int, runs: int):
     perform_runs(AsaxNeighborListNve, key, atoms, dt, steps, batch_size, runs)
 
 
-# super_cells = list(filter(lambda atoms: len(atoms) >= 1000, utils.load_super_cells("../super_cells")))
-super_cells = [jax_utils.initialize_cubic_argon(multiplier=8)]
+super_cells = list(filter(lambda atoms: len(atoms) >= 1000, utils.load_super_cells("../super_cells")))
+# super_cells = [jax_utils.initialize_cubic_argon(multiplier=14)]
 print("n = {}".format([len(atoms) for atoms in super_cells]))
 
-steps = 1000
+steps = 5000
 batch_size = 5
 runs = 10
 dt = 5 * units.fs
@@ -109,6 +109,5 @@ for atoms in super_cells:
     run_jax_md(atoms, dt, steps, batch_size, runs)
     run_asax(atoms, dt, steps, batch_size, runs)
 
-
-print(results)
-# utils.persist(results, "ase_benchmark_results.pickle")
+# print(results)
+utils.persist(results, "asax_jaxmd_5000_steps.pickle")

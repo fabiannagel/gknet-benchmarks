@@ -1,4 +1,7 @@
-from utils import *
+from typing import Callable, List, Tuple
+
+from calculators.calculator import Calculator
+import utils
 from ase.atoms import Atoms
 from calculators.result import Result
 from calculators.lennard_jones.pair.jaxmd_lennard_jones_pair import JmdLennardJonesPair
@@ -141,10 +144,11 @@ class RuntimeBenchmark:
         self.oom_events.append(event)
 
 
-super_cells = load_super_cells_from_pickle(
-    "/home/pop518504/git/gknet-benchmarks/make_supercells/supercells_108_23328.pickle")
+super_cells = utils.load_super_cells("../../super_cells")
 
-benchmark = RuntimeBenchmark(super_cells, runs=100)
+runs = 100
+benchmark = RuntimeBenchmark(super_cells, runs)
 benchmark.run()
 
-persist_results(benchmark.results, runs=100, descriptor="float32_benchmarks")
+file_name = "results_{}_{}_runs.pickle".format("float32_benchmarks", runs)
+utils.persist(benchmark.results, file_name)
