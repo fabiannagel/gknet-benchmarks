@@ -48,6 +48,7 @@ for md_driver_name, benchmarked_systems in results.items():
         continue
 
     mean_step_milliseconds = []
+    standard_deviations = []
     step_milliseconds_min = []
     step_milliseconds_max = []
 
@@ -56,16 +57,26 @@ for md_driver_name, benchmarked_systems in results.items():
         step_milliseconds = runtimes['mean_step_milliseconds']  # ms/step as the mean of all measured runtimes per step
 
         mean_step_milliseconds += [np.mean(step_milliseconds)]
+        standard_deviations += [np.std(step_milliseconds)]
         step_milliseconds_min += [np.min(step_milliseconds)]
         step_milliseconds_max += [np.max(step_milliseconds)]
 
     adapted_atom_counts = atom_counts[:len(mean_step_milliseconds)]
     converted_label = convert_label(md_driver_name)
 
-    plt.plot(adapted_atom_counts, mean_step_milliseconds, label=converted_label)
+    # shade by min/max values
     plt.fill_between(adapted_atom_counts, step_milliseconds_min, step_milliseconds_max, alpha=0.2)
 
-plt.title("{}\n{}".format("NVE runtime per step for increasing atom count", pretty_print_run_info(results['run_info'])))
+    # shade by 2 standard deviations
+    # y_start = np.array(mean_step_milliseconds) - 2 * np.array(standard_deviations)
+    # y_end = np.array(mean_step_milliseconds) + 2 * np.array(standard_deviations)
+    # plt.fill_between(adapted_atom_counts, y_start, y_end, alpha=0.2)
+
+    plt.plot(adapted_atom_counts, mean_step_milliseconds, label=converted_label)
+
+
+
+plt.title("{}\n{}".format("NVE runtime for increasing atom count of Lennard-Jones Argon", pretty_print_run_info(results['run_info'])))
 plt.xlabel("Number of atoms")
 plt.ylabel("Computation time per MD step [ms]")
 # plt.yscale("log")
