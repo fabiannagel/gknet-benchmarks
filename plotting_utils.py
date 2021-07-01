@@ -14,8 +14,6 @@ def plot_runtimes(results: List[Result],
                   scatter = False,
                   figsize=(20, 10)):
 
-    # TODO: Migrate to plotting_utils.py
-
     runs = []
     system_sizes = get_system_sizes(results)
     fig, ax = plt.subplots(figsize=figsize)
