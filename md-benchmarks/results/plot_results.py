@@ -1,13 +1,8 @@
-import sys
 from typing import Dict, Set
 import numpy as np
 from ase import units
-
-# TODO: Remove from git!
-if not '/Users/fabian/git/gknet-benchmarks' in sys.path:
-    sys.path.insert(0, '/Users/fabian/git/gknet-benchmarks')
-
 import matplotlib.pyplot as plt
+plt.style.use('seaborn')
 import utils
 
 
@@ -66,7 +61,9 @@ for md_driver_name, benchmarked_systems in results.items():
 
     adapted_atom_counts = atom_counts[:len(mean_step_milliseconds)]
     converted_label = convert_label(md_driver_name)
+
     plt.plot(adapted_atom_counts, mean_step_milliseconds, label=converted_label)
+    plt.fill_between(adapted_atom_counts, step_milliseconds_min, step_milliseconds_max, alpha=0.2)
 
 plt.title("{}\n{}".format("NVE runtime per step for increasing atom count", pretty_print_run_info(results['run_info'])))
 plt.xlabel("Number of atoms")
