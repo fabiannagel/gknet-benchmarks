@@ -1,21 +1,18 @@
 from __future__ import annotations
+
+import itertools
+import math
 import warnings
-
 from typing import List, Optional
-from calculators.calculator import Calculator
-from calculators.result import Result
 
-from vibes.helpers.supercell import make_cubic_supercell
+import numpy as np
 from ase import Atoms
 from ase.build import bulk
 from ase.calculators.lj import LennardJones
-from ase.calculators.calculator import PropertyNotImplementedError
 from ase.constraints import voigt_6_to_full_3x3_stress
 
-
-import numpy as np
-import itertools
-import math
+from calculators.calculator import Calculator
+from calculators.result import Result
 
 
 class AseLennardJonesPair(Calculator):
@@ -47,8 +44,7 @@ class AseLennardJonesPair(Calculator):
         '''        
 
         atoms = bulk("Ar", cubic=True)
-        atoms, _ = make_cubic_supercell(atoms, target_size=n)
-        # atoms = bulk('Ar', cubic=True) * cls._compute_supercell_multipliers('Ar', n)
+        atoms = bulk('Ar', cubic=True) * cls._compute_supercell_multipliers('Ar', n)
         
         if r_cutoff is None:
             max_box_length = np.max([np.linalg.norm(uv) for uv in atoms.get_cell().array])

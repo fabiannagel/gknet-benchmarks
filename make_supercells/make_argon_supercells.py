@@ -1,28 +1,9 @@
-import pickle
-import sys
 import ase.io
 from ase.md.velocitydistribution import Stationary, MaxwellBoltzmannDistribution
-
-if not '/home/pop518504/git/gknet-benchmarks' in sys.path:
-    sys.path.insert(0, '/home/pop518504/git/gknet-benchmarks')
-
 from typing import List
 from ase.atoms import Atoms
 from ase.build import bulk
 from vibes.helpers.supercell import make_cubic_supercell
-
-
-def thermalize_old_supercells(temperature_K = 30):
-    with open("supercells_108_23328.pickle", 'rb') as handle:
-        super_cells: List[Atoms] = pickle.load(handle)
-
-    for atoms in super_cells:
-        MaxwellBoltzmannDistribution(atoms, temperature_K=temperature_K)
-        Stationary(atoms)
-
-        file_name = "argon_{}_{}k.in".format(len(atoms), temperature_K)
-        print("Writing {}".format(file_name))
-        ase.io.write(file_name, atoms, velocities=True, format="aims")
 
 
 def make_cubic_supercells(n_start: int, n_stop: int, n_step: int, temperature_K: float) -> List[Atoms]:
