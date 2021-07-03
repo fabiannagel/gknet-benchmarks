@@ -31,7 +31,7 @@ def create_output_path(runs: int) -> str:
 
 def persist(obj, file_path: str):
     path = os.path.dirname(file_path)
-    if not os.path.exists(path):
+    if not os.path.exists(path) and path != '':
         os.makedirs(path)
 
     with open(file_path, 'wb') as handle:
