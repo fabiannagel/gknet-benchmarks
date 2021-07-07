@@ -35,6 +35,6 @@ def create_thermalized_trajectories(n_start: int, n_stop: int, n_step=100, tempe
     super_cells = make_cubic_supercells(n_start, n_stop, n_step, temperature_K)
 
     for atoms in super_cells:
-        file_name = "argon_{}_{}k.in".format(len(atoms), temperature_K)
+        file_name = "argon_{}k_{}.in".format(temperature_K, len(atoms))
         print("Writing {}".format(file_name))
         ase.io.write(file_name, atoms, velocities=True, format="aims")
