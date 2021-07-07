@@ -10,7 +10,7 @@ from jax import vmap, random
 from jax.api import grad, jacfwd, jit
 from jax.interpreters.xla import DeviceArray
 from jax_md import energy
-from jax_md.energy import DisplacementFn
+from jax_md.energy import DisplacementFn, NeighborList
 from jax_md.simulate import NVEState
 
 from os import environ
@@ -24,6 +24,20 @@ EnergyFn = Callable[[space.Array, energy.NeighborList], space.Array]
 PotentialFn = Callable[[space.Array], Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, None, None]]
 PotentialProperties = Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]
 
+
+def strain_nl_energy_fn(total_energy_fn: EnergyFn, box: jnp.array):
+
+    # in order to differentiate w.r.t. the deformation, does it have to be an argument?
+    # or can it be wrapped at creation time?
+
+    transform_box_fn = lambda deformation: space.transform(jnp.eye(3) + (deformation + deformation.T) * 0.5, box)
+
+    strained_total_energy_fn = lambda R, deformation, *args, **kwargs: total_energy_fn(R, *args, box=transform_box_fn(deformation), **kwargs)
+    stress_fn = lambda R, deformation, *args, **kwargs: grad(strained_total_energy_fn, argnums=1)(R, deformation, *args, **kwargs) / jnp.linalg.det(box)
+
+    return strained_total_energy_fn, stress_fn
+
+# TODO for all NL potentials: neighbors are only wrapped at potential creation time, but never passed during evaluations!
 
 def strained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray) -> PotentialFn:
     def potential(R: space.Array) -> PotentialProperties:
@@ -299,8 +313,6 @@ def get_strained_neighbor_list_potential(energy_fn, neighbors, box: jnp.ndarray,
 
 
 def get_unstrained_neighbor_list_potential(energy_fn, neighbors) -> PotentialFn:
-
-    # TODO: neighbors are only wrapped at potential creation time, but never updated in unstrained_potential()! update in asax!
 
     def unstrained_potential(R: space.Array) -> PotentialProperties:
         total_energy_fn = lambda R, *args, **kwargs: jnp.sum(energy_fn(R, *args, **kwargs))
