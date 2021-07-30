@@ -8,9 +8,8 @@ from ase import units
 from jax import linear_util as lu
 from jax import tree_map, partial, tree_transpose, tree_structure
 from jax._src.api import _check_callable, _vjp, _check_input_dtype_jacrev, _check_output_dtype_jacrev, _std_basis, \
-    _unravel_array_into_pytree, jacrev
+    _unravel_array_into_pytree, jacrev, jit
 # from jax._src.util import safe_map
-from jax._src.util import safe_map
 from jax.api_util import argnums_partial
 from jax_md import space, energy
 
@@ -18,7 +17,6 @@ import jax_utils
 
 jax.config.update("jax_enable_x64", True)
 global_dtype = "float64"
-
 
 def jacrev_iterative(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
            holomorphic: bool = False, allow_int: bool = False) -> Callable:
@@ -32,23 +30,27 @@ def jacrev_iterative(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
     y, pullback = _vjp(f_partial, *dyn_args)
     tree_map(partial(_check_output_dtype_jacrev, holomorphic), y)
 
-    # replace vmap with safe_map
+    # replace vmap with iterative_safe_map
     # jac = vmap(pullback)(_std_basis(y))
-    jac = safe_map(pullback, _std_basis(y))
-
-    # don't know what's happening here, but this seems to get rid of the first tensor dimension.
-    # jac = jac[0] if isinstance(argnums, int) else jac
-    # example_args = dyn_args[0] if isinstance(argnums, int) else dyn_args
-
-    # if we instead use the entire jacobian + all arguments, at least the shapes look correct...
-    example_args = dyn_args
-
+    jac = iterative_safe_map(pullback, _std_basis(y))
+    jac = jac[0] if isinstance(argnums, int) else jac
+    example_args = dyn_args[0] if isinstance(argnums, int) else dyn_args
     jac = tree_map(partial(_unravel_array_into_pytree, y, 0), jac)
-
-    # ... but JAX crashes when everything is transformed back into a tree
     return tree_transpose(tree_structure(example_args), tree_structure(y), jac)
 
   return jacfun
+
+def iterative_safe_map(f, *args):
+  args = list(map(list, args))
+  n = len(args[0])
+  for arg in args[1:]:
+    assert len(arg) == n, 'length mismatch: {}'.format(list(map(len, args)))
+  result = list(map(f, *args))
+
+  without_tuples = list(map(lambda r: r[0], result))
+  stacked = jnp.stack(without_tuples, axis=0)
+  return stacked,
+
 
 # initialize atoms
 atoms = jax_utils.initialize_cubic_argon(multiplier=4)
@@ -74,18 +76,17 @@ neighbors = neighbor_fn(R)
 total_energy_fn = lambda R, neighbor: jnp.sum(atomwise_energy_fn(R, neighbor=neighbor))
 atomwise_energies = atomwise_energy_fn(R, neighbor=neighbors)
 
-compute_force_contributions_iteratively = lambda: jacrev_iterative(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
-time_iteratively = timeit.timeit(compute_force_contributions_iteratively, number=5)
+compute_force_contributions_iteratively = jit(lambda: jacrev_iterative(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors))
+compute_force_contributions_vmapped = jit(lambda: jacrev(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors))
+np.testing.assert_allclose(compute_force_contributions_iteratively(), compute_force_contributions_vmapped(), atol=1e-15)
+
+# measure execution time
+print("Compute force contribution Jacobians for n = {}".format(len(atoms)))
+
+time_iteratively = timeit.timeit(compute_force_contributions_iteratively, number=10)
 print("Iteratively: {} seconds".format(time_iteratively))
 
-compute_force_contributions_vmapped = lambda: jacrev(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
-time_vmapped = timeit.timeit(compute_force_contributions_vmapped, number=5)
+time_vmapped = timeit.timeit(compute_force_contributions_vmapped, number=10)
 print("Vmapped: {} seconds".format(time_vmapped))
 
-forces_iteratively = compute_force_contributions_iteratively()
-forces_vmapped = compute_force_contributions_vmapped()
-
-print(forces_iteratively.shape)
-print(forces_vmapped.shape)
-# np.testing.assert_array_equal(forces_iteratively, forces_vmapped)
-# np.testing.assert_allclose(forces_vmapped, forces_iteratively, atol=1e-5)
+print("\nVmapped version runs {} faster than iterative".format(time_iteratively / time_vmapped))
