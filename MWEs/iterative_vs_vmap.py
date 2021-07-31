@@ -1,3 +1,4 @@
+import pprint
 import timeit
 from typing import Callable, Union, Sequence
 
@@ -17,6 +18,7 @@ import jax_utils
 
 jax.config.update("jax_enable_x64", True)
 global_dtype = "float64"
+
 
 def jacrev_iterative(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
            holomorphic: bool = False, allow_int: bool = False) -> Callable:
@@ -40,6 +42,7 @@ def jacrev_iterative(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
 
   return jacfun
 
+
 def iterative_safe_map(f, *args):
   args = list(map(list, args))
   n = len(args[0])
@@ -52,41 +55,77 @@ def iterative_safe_map(f, *args):
   return stacked,
 
 
-# initialize atoms
-atoms = jax_utils.initialize_cubic_argon(multiplier=4)
-R = jnp.array(atoms.get_positions(wrap=True), dtype=global_dtype)
 
-# setup displacement
-box = jnp.array(atoms.get_cell().array, dtype=global_dtype)
-displacement_fn, shift_fn = space.periodic_general(box, fractional_coordinates=False)
+def initialize_system(multiplier=4):
+    # initialize atoms
+    atoms = jax_utils.initialize_cubic_argon(multiplier=multiplier)
+    R = jnp.array(atoms.get_positions(wrap=True), dtype=global_dtype)
 
-# initialize Lennard-Jones
-lj = jax_utils.get_argon_lennard_jones_parameters()
-neighbor_fn, atomwise_energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, box,
-                                                                     sigma=lj['sigma'],
-                                                                     epsilon=lj['epsilon'],
-                                                                     r_onset=lj['ro'] / lj['sigma'],
-                                                                     r_cutoff=lj['rc'] / lj['sigma'],
-                                                                     dr_threshold=1 * units.Angstrom,
-                                                                     per_particle=True)
+    # setup displacement
+    box = jnp.array(atoms.get_cell().array, dtype=global_dtype)
+    displacement_fn, shift_fn = space.periodic_general(box, fractional_coordinates=False)
 
-# compute initial neighbor list
-neighbors = neighbor_fn(R)
+    # initialize Lennard-Jones
+    lj = jax_utils.get_argon_lennard_jones_parameters()
+    neighbor_fn, atomwise_energy_fn = energy.lennard_jones_neighbor_list(displacement_fn, box,
+                                                                         sigma=lj['sigma'],
+                                                                         epsilon=lj['epsilon'],
+                                                                         r_onset=lj['ro'] / lj['sigma'],
+                                                                         r_cutoff=lj['rc'] / lj['sigma'],
+                                                                         dr_threshold=1 * units.Angstrom,
+                                                                         per_particle=True)
 
-total_energy_fn = lambda R, neighbor: jnp.sum(atomwise_energy_fn(R, neighbor=neighbor))
-atomwise_energies = atomwise_energy_fn(R, neighbor=neighbors)
+    # compute initial neighbor list
+    neighbors = neighbor_fn(R)
 
-compute_force_contributions_iteratively = jit(lambda: jacrev_iterative(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors))
-compute_force_contributions_vmapped = jit(lambda: jacrev(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors))
-np.testing.assert_allclose(compute_force_contributions_iteratively(), compute_force_contributions_vmapped(), atol=1e-15)
+    return R, neighbors, atomwise_energy_fn
 
-# measure execution time
-print("Compute force contribution Jacobians for n = {}".format(len(atoms)))
 
-time_iteratively = timeit.timeit(compute_force_contributions_iteratively, number=10)
-print("Iteratively: {} seconds".format(time_iteratively))
+jit_flags = [True, False]
+multipliers = list(range(1, 4))
+runs = 10
 
-time_vmapped = timeit.timeit(compute_force_contributions_vmapped, number=10)
-print("Vmapped: {} seconds".format(time_vmapped))
+runtimes = {}
+runtimes['runs'] = runs
 
-print("\nVmapped version runs {} faster than iterative".format(time_iteratively / time_vmapped))
+for use_jit in jit_flags:
+
+    k_jit = "jit={}".format(use_jit)
+    runtimes[k_jit] = {}
+
+    for multiplier in multipliers:
+
+        k_multiplier = "multiplier={}".format(multiplier)
+        runtimes[k_jit][k_multiplier] = {}
+
+        R, neighbors, atomwise_energy_fn = initialize_system(multiplier=multiplier)
+
+        # functions for computing force contributions
+        compute_force_contributions_iteratively = lambda: jacrev_iterative(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
+        compute_force_contributions_vmapped = lambda: jacrev(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
+
+        if use_jit:
+            compute_force_contributions_iteratively = jit(compute_force_contributions_iteratively)
+            compute_force_contributions_vmapped = jit(compute_force_contributions_vmapped)
+
+        np.testing.assert_allclose(compute_force_contributions_iteratively(), compute_force_contributions_vmapped(), atol=1e-15)
+
+        # measure execution time
+        print("Compute force contribution Jacobians for n = {}".format(len(R)))
+
+        time_iteratively = timeit.timeit(compute_force_contributions_iteratively, number=runs)
+        runtimes[k_jit][k_multiplier]['iteratively'] = time_iteratively
+        print("Iteratively: {} seconds".format(time_iteratively))
+
+        time_vmapped = timeit.timeit(compute_force_contributions_vmapped, number=runs)
+        runtimes[k_jit][k_multiplier]['vmapped'] = time_vmapped
+        print("Vmapped: {} seconds".format(time_vmapped))
+
+        speedup = time_iteratively / time_vmapped
+        runtimes[k_jit][k_multiplier]['speedup'] = speedup
+        print("{} speed up by vmap".format(speedup))
+
+
+print()
+pprint.pprint([runtimes])
+# json.dumps(runtimes)
