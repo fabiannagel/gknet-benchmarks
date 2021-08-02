@@ -11,7 +11,6 @@ This script captures the computing time necessary for multiple runs of computing
 """
 
 
-import pprint
 import timeit
 from typing import Callable, Union, Sequence, Dict
 
@@ -32,7 +31,7 @@ import jax_utils
 import utils
 
 jax.config.update("jax_enable_x64", True)
-global_dtype = "float64"
+global_dtype = "float32"
 
 def jacrev_iterative(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
            holomorphic: bool = False, allow_int: bool = False) -> Callable:
@@ -64,13 +63,13 @@ def iterative_safe_map(f, *args):
     assert len(arg) == n, 'length mismatch: {}'.format(list(map(len, args)))
   result = list(map(f, *args))
 
-  without_tuples = list(map(lambda r: r[0], result))
-  stacked = jnp.stack(without_tuples, axis=0)
-  return stacked,
+  # without_tuples = list(map(lambda r: r[0], result))
+  # stacked = jnp.stack(without_tuples, axis=0)
+  # return stacked,
+  return jnp.stack([r[0] for r in result], axis=0),
 
 
-
-def initialize_system(multiplier=4):
+def initialize_system(multiplier: int):
     # initialize atoms
     atoms = jax_utils.initialize_cubic_argon(multiplier=multiplier)
     R = jnp.array(atoms.get_positions(wrap=True), dtype=global_dtype)
@@ -95,7 +94,7 @@ def initialize_system(multiplier=4):
     return R, neighbors, atomwise_energy_fn
 
 
-multipliers = list(range(1, 20))
+multipliers = list(range(1, 8))
 runs = 10
 runtimes = {'runs': runs}
 
@@ -111,6 +110,7 @@ for use_jit in [True, False]:
         runtimes[k_jit][k_multiplier] = {}
 
         # functions for computing force contributions
+
         compute_force_contributions_iteratively = lambda: jacrev_iterative(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
         compute_force_contributions_vmapped = lambda: jacrev(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
 
@@ -122,10 +122,12 @@ for use_jit in [True, False]:
 
         print("Compute force contribution Jacobians for n = {}".format(len(R)))
 
-        time_iteratively = timeit.timeit(compute_force_contributions_iteratively, number=runs)
+        compute_iteratively_blocked = lambda: compute_force_contributions_iteratively().block_until_ready()
+        time_iteratively = timeit.timeit(compute_iteratively_blocked, number=runs)
         runtimes[k_jit][k_multiplier]['iteratively'] = time_iteratively
 
-        time_vmapped = timeit.timeit(compute_force_contributions_vmapped, number=runs)
+        compute_vmapped_blocked = lambda: compute_force_contributions_vmapped().block_until_ready()
+        time_vmapped = timeit.timeit(compute_vmapped_blocked, number=runs)
         runtimes[k_jit][k_multiplier]['vmapped'] = time_vmapped
 
         speedup = time_iteratively / time_vmapped
