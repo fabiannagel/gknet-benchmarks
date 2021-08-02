@@ -13,7 +13,7 @@ def plot_jacobian_benchmark(runtimes: Dict):
 
     runtime_jitted_iteratively = list(map(lambda m: jitted[m]['iteratively'], jitted_multipliers))
     runtime_jitted_vmapped = list(map(lambda m: jitted[m]['vmapped'], jitted_multipliers))
-    runtime_jitted_speedup = list(map(lambda m: jitted[m]['speedup'], jitted_multipliers))
+    # runtime_jitted_speedup = list(map(lambda m: jitted[m]['speedup'], jitted_multipliers))
 
     plot(jitted_multipliers, runtime_jitted_iteratively, "iteratively, jit=True")
     plot(jitted_multipliers, runtime_jitted_vmapped, "vmapped, jit=True")
@@ -22,9 +22,10 @@ def plot_jacobian_benchmark(runtimes: Dict):
     # plot runs with jit=False
     non_jitted = runtimes['jit=False']
     non_jitted_multipliers = list(non_jitted.keys())
+
     runtime_non_jitted_iteratively = list(map(lambda m: non_jitted[m]['iteratively'], non_jitted_multipliers))
     runtime_non_jitted_vmapped = list(map(lambda m: non_jitted[m]['vmapped'], non_jitted_multipliers))
-    runtime_non_jitted_speedup = list(map(lambda m: non_jitted[m]['speedup'], non_jitted_multipliers))
+    # runtime_non_jitted_speedup = list(map(lambda m: non_jitted[m]['speedup'], non_jitted_multipliers))
 
     plot(non_jitted_multipliers, runtime_non_jitted_iteratively, "iteratively, jit=False")
     plot(non_jitted_multipliers, runtime_non_jitted_vmapped, "vmapped, jit=False")
@@ -38,5 +39,8 @@ def plot_jacobian_benchmark(runtimes: Dict):
     plt.show()
 
 
+# runtimes = utils.load("both_jacobians_benchmark.pickle")
+# runtimes = utils.load("iteratively_jacobians_benchmark.pickle")
 runtimes = utils.load("jacobians_benchmark.pickle")
+
 plot_jacobian_benchmark(runtimes)

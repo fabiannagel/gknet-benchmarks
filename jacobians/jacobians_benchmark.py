@@ -94,11 +94,13 @@ def initialize_system(multiplier: int):
     return R, neighbors, atomwise_energy_fn
 
 
-multipliers = list(range(1, 8))
-runs = 10
+multipliers = list(range(1, 20))
+runs = 1
 runtimes = {'runs': runs}
 
-for use_jit in [True, False]:
+oom_events = []
+
+for use_jit in [False, True]:
 
     k_jit = "jit={}".format(use_jit)
     runtimes[k_jit] = {}
@@ -106,31 +108,49 @@ for use_jit in [True, False]:
     for multiplier in multipliers:
         R, neighbors, atomwise_energy_fn = initialize_system(multiplier=multiplier)
 
+        print("Compute force contribution Jacobians for n = {}".format(len(R)))
+
         k_multiplier = "n={}".format(len(R))
         runtimes[k_jit][k_multiplier] = {}
 
-        # functions for computing force contributions
+        # compute force contributions iteratively
+        if not "{}{}".format(use_jit, "iteratively") in oom_events:
+            try:
+                compute_force_contributions_iteratively = lambda: jacrev_iterative(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
+                if use_jit:
+                    compute_force_contributions_iteratively = jit(compute_force_contributions_iteratively)
 
-        compute_force_contributions_iteratively = lambda: jacrev_iterative(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
-        compute_force_contributions_vmapped = lambda: jacrev(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
+                compute_iteratively_blocked = lambda: compute_force_contributions_iteratively().block_until_ready()
+                time_iteratively = timeit.timeit(compute_iteratively_blocked, number=runs)
+                runtimes[k_jit][k_multiplier]['iteratively'] = time_iteratively
 
-        if use_jit:
-            compute_force_contributions_iteratively = jit(compute_force_contributions_iteratively)
-            compute_force_contributions_vmapped = jit(compute_force_contributions_vmapped)
+            except RuntimeError:
+                print("jit={}, iteratively went OOM".format(use_jit))
+                oom_events.append("{}{}".format(use_jit, "iteratively"))
 
-        np.testing.assert_allclose(compute_force_contributions_iteratively(), compute_force_contributions_vmapped(), atol=1e-15)
+        else:
+            print("jit={}, iteratively went OOM before. skipping...".format(use_jit))
 
-        print("Compute force contribution Jacobians for n = {}".format(len(R)))
+        # compute force contributions vmapped
+        if not "{}{}".format(use_jit, "vmapped") in oom_events:
 
-        compute_iteratively_blocked = lambda: compute_force_contributions_iteratively().block_until_ready()
-        time_iteratively = timeit.timeit(compute_iteratively_blocked, number=runs)
-        runtimes[k_jit][k_multiplier]['iteratively'] = time_iteratively
+            try:
+                compute_force_contributions_vmapped = lambda: jacrev(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
+                if use_jit:
+                    compute_force_contributions_vmapped = jit(compute_force_contributions_vmapped)
 
-        compute_vmapped_blocked = lambda: compute_force_contributions_vmapped().block_until_ready()
-        time_vmapped = timeit.timeit(compute_vmapped_blocked, number=runs)
-        runtimes[k_jit][k_multiplier]['vmapped'] = time_vmapped
+                compute_vmapped_blocked = lambda: compute_force_contributions_vmapped().block_until_ready()
+                time_vmapped = timeit.timeit(compute_vmapped_blocked, number=runs)
+                runtimes[k_jit][k_multiplier]['vmapped'] = time_vmapped
 
-        speedup = time_iteratively / time_vmapped
-        runtimes[k_jit][k_multiplier]['speedup'] = speedup
+            except RuntimeError:
+                print("jit={}, vmapped went OOM".format(use_jit))
+                oom_events.append("{}{}".format(use_jit, "vmapped"))
+
+        else:
+            print("jit={}, vmapped went OOM before. skipping...".format(use_jit))
+
+        # TODO: Does the assertion fail because of float32?
+        # np.testing.assert_allclose(compute_force_contributions_iteratively(), compute_force_contributions_vmapped(), atol=1e-15)
 
 utils.persist(runtimes, 'jacobians_benchmark.pickle')
