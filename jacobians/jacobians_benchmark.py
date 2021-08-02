@@ -94,7 +94,7 @@ def initialize_system(multiplier: int):
     return R, neighbors, atomwise_energy_fn
 
 
-multipliers = list(range(1, 20))
+multipliers = list(range(15, 20))
 runs = 1
 runtimes = {'runs': runs}
 
@@ -106,7 +106,12 @@ for use_jit in [False, True]:
     runtimes[k_jit] = {}
 
     for multiplier in multipliers:
-        R, neighbors, atomwise_energy_fn = initialize_system(multiplier=multiplier)
+
+        try:
+            R, neighbors, atomwise_energy_fn = initialize_system(multiplier=multiplier)
+        except RuntimeError:
+            print("OOM during system init")
+            break
 
         print("Compute force contribution Jacobians for n = {}".format(len(R)))
 
