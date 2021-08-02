@@ -95,8 +95,8 @@ def initialize_system(multiplier=4):
     return R, neighbors, atomwise_energy_fn
 
 
-multipliers = list(range(1, 5))
-runs = 1
+multipliers = list(range(1, 20))
+runs = 10
 runtimes = {'runs': runs}
 
 for use_jit in [True, False]:

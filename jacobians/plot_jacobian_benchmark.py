@@ -38,5 +38,5 @@ def plot_jacobian_benchmark(runtimes: Dict):
     plt.show()
 
 
-runtimes = utils.load("gradient_accumulation_benchmark.pickle")
+runtimes = utils.load("jacobians_benchmark.pickle")
 plot_jacobian_benchmark(runtimes)
