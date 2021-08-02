@@ -1,6 +1,19 @@
+"""
+How much would a JAX-based implementation accelerate heat flux computations through vectorization (vmap)?
+
+To provide a rough estimate without actually having to implement the heat flux first, we fall back on a similar problem: Computing force contributions iteratively vs. using vmap.
+Essentially, we compute the Jacobian of all atomic energy contributions of shape (n, 3) w.r.t. all atomic positions R of shape (n,).
+
+In JAX, we can do this by calling `jacrev()` which computes the Jacobian using reverse mode and uses vmap under the hood.
+In PyTorch, we would have to do this iteratively for each $r \in R$. JAX cannot do this by default (afaik), so we provide an implementation of `jacrev_iterative()`.
+
+This script captures the computing time necessary for multiple runs of computing force contributions, both iteratively and vmapped.
+"""
+
+
 import pprint
 import timeit
-from typing import Callable, Union, Sequence
+from typing import Callable, Union, Sequence, Dict
 
 import jax
 import jax.numpy as jnp
@@ -13,12 +26,13 @@ from jax._src.api import _check_callable, _vjp, _check_input_dtype_jacrev, _chec
 # from jax._src.util import safe_map
 from jax.api_util import argnums_partial
 from jax_md import space, energy
+from matplotlib import pyplot as plt
 
 import jax_utils
+import utils
 
 jax.config.update("jax_enable_x64", True)
 global_dtype = "float64"
-
 
 def jacrev_iterative(fun: Callable, argnums: Union[int, Sequence[int]] = 0,
            holomorphic: bool = False, allow_int: bool = False) -> Callable:
@@ -81,24 +95,20 @@ def initialize_system(multiplier=4):
     return R, neighbors, atomwise_energy_fn
 
 
-jit_flags = [True, False]
-multipliers = list(range(1, 4))
-runs = 10
+multipliers = list(range(1, 5))
+runs = 1
+runtimes = {'runs': runs}
 
-runtimes = {}
-runtimes['runs'] = runs
-
-for use_jit in jit_flags:
+for use_jit in [True, False]:
 
     k_jit = "jit={}".format(use_jit)
     runtimes[k_jit] = {}
 
     for multiplier in multipliers:
-
-        k_multiplier = "multiplier={}".format(multiplier)
-        runtimes[k_jit][k_multiplier] = {}
-
         R, neighbors, atomwise_energy_fn = initialize_system(multiplier=multiplier)
+
+        k_multiplier = "n={}".format(len(R))
+        runtimes[k_jit][k_multiplier] = {}
 
         # functions for computing force contributions
         compute_force_contributions_iteratively = lambda: jacrev_iterative(atomwise_energy_fn, argnums=0)(R, neighbor=neighbors)
@@ -110,22 +120,15 @@ for use_jit in jit_flags:
 
         np.testing.assert_allclose(compute_force_contributions_iteratively(), compute_force_contributions_vmapped(), atol=1e-15)
 
-        # measure execution time
         print("Compute force contribution Jacobians for n = {}".format(len(R)))
 
         time_iteratively = timeit.timeit(compute_force_contributions_iteratively, number=runs)
         runtimes[k_jit][k_multiplier]['iteratively'] = time_iteratively
-        print("Iteratively: {} seconds".format(time_iteratively))
 
         time_vmapped = timeit.timeit(compute_force_contributions_vmapped, number=runs)
         runtimes[k_jit][k_multiplier]['vmapped'] = time_vmapped
-        print("Vmapped: {} seconds".format(time_vmapped))
 
         speedup = time_iteratively / time_vmapped
         runtimes[k_jit][k_multiplier]['speedup'] = speedup
-        print("{} speed up by vmap".format(speedup))
 
-
-print()
-pprint.pprint([runtimes])
-# json.dumps(runtimes)
+utils.persist(runtimes, 'jacobians_benchmark.pickle')
